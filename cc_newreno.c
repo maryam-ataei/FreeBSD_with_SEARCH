@@ -82,7 +82,12 @@
 #include <netinet/tcp_hpts.h>
 #include <netinet/cc/cc.h>
 #include <netinet/cc/cc_module.h>
-#include <netinet/cc/cc_newreno.h>
+###### SEARCH ######
+#include <netinet/cc/cc_newreno_search.h>
+#include <sys/syslog.h>
+
+// Define a flag to toggle between SEARCH and HyStart
+static int use_search = 1;  // 1 for SEARCH, 0 for HyStart (default)
 
 static void	newreno_cb_destroy(struct cc_var *ccv);
 static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
@@ -212,6 +217,69 @@ newreno_cb_destroy(struct cc_var *ccv)
 	free(ccv->cc_data, M_CC_MEM);
 }
 
+/////////////////// SEARCH ///////////////////////////////////
+static void search_update(struct cc_var* ccv) {
+
+	struct newreno* nreno = ccv->cc_data;
+
+	uint64_t now_us = get_now_us();
+	uint64_t rtt_us = get_rtt_us(ccv);
+
+	int32_t prev_idx = 0;
+	int64_t curr_delv_bytes = 0;	// Bytes delivered in the current rolling RTT
+	int64_t prev_delv_bytes = 0;	// Bytes delivered in the previous rolling RTT
+	int32_t norm_diff = 0; 			// Ratio of expected/actual delivered bytes in the current rolling RTT
+	uint32_t fraction = 0; // Interpolate sliding bin values that might not exactly line up with bins
+
+	nreno->search_bytes_this_bin += ccv->bytes_this_ack;
+
+	// On first ack, initialize bin duration and bin end time
+	if (nreno->search_bin_duration_us == 0) {
+		search_init_bins(ccv, now_us, rtt_us);
+		return;
+	}
+
+	// If we have reached the bin boundary,
+	if (now_us > nreno->search_bin_end_us) {
+		// log(LOG_NOTICE, "<%p> SEARCH bin boundary\n", ccv);
+		if (search_update_bins(ccv, now_us, rtt_us)) {
+			// Missed > SEARCH_MISSED_BIN_RESET_THRESHOLD bins
+			return;
+		}
+
+		// Are there enough bins to compute previous window?
+		prev_idx = nreno->search_curr_idx - (rtt_us / nreno->search_bin_duration_us);
+#ifdef SEARCH_LOG_ENABLED
+		log(LOG_INFO, "<%p> SEARCH Compute windows: [now %lu] [prev_idx %d]", ccv, now_us, prev_idx);
+#endif
+		if (prev_idx >= SEARCH_BINS && (nreno->search_curr_idx - prev_idx) < SEARCH_EXTRA_BINS - 1) { // Add back -1?
+			// Calculate delivered bytes for the current and previous windows
+			curr_delv_bytes = search_compute_delivered_window(ccv, nreno->search_curr_idx - SEARCH_BINS, nreno->search_curr_idx, 0);
+			fraction = ((rtt_us % nreno->search_bin_duration_us) * 100 / nreno -> search_bin_duration_us);
+			prev_delv_bytes = search_compute_delivered_window(ccv, prev_idx - SEARCH_BINS, prev_idx, fraction);
+#ifdef SEARCH_LOG_ENABLED
+			log(LOG_INFO, " [curr_delv_bytes %ld] [fraction %d] [prev_delv_bytes %ld]", curr_delv_bytes, fraction, prev_delv_bytes);
+#endif
+			if (prev_delv_bytes > 0) {
+				norm_diff = ((2 * prev_delv_bytes) - curr_delv_bytes) * 100 / (2 * prev_delv_bytes);
+#ifdef SEARCH_LOG_ENABLED
+				log(LOG_INFO, "[norm_diff %d]", norm_diff);
+#endif
+				// exit condition
+				if ((2 * prev_delv_bytes) >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
+#ifdef SEARCH_LOG_ENABLED
+					log(LOG_INFO, "\n");
+#endif
+					search_exit_slow_start(ccv, now_us, rtt_us);
+				}
+			}
+		}
+#ifdef SEARCH_LOG_ENABLED
+		log(LOG_INFO, "\n");
+#endif
+	}
+}
+
 static void
 newreno_ack_received(struct cc_var *ccv, uint16_t type)
 {
@@ -269,71 +337,80 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					incr = 0;
 			} else
 				incr = max((incr * incr / cw), 1);
-		} else if (V_tcp_do_rfc3465) {
-			/*
-			 * In slow-start with ABC enabled and no RTO in sight?
-			 * (Must not use abc_l_var > 1 if slow starting after
-			 * an RTO. On RTO, snd_nxt = snd_una, so the
-			 * snd_nxt == snd_max check is sufficient to
-			 * handle this).
-			 *
-			 * XXXLAS: Find a way to signal SS after RTO that
-			 * doesn't rely on tcpcb vars.
-			 */
-			uint16_t abc_val;
 
-			if (ccv->flags & CCF_USE_LOCAL_ABC)
-				abc_val = ccv->labc;
-			else
-				abc_val = V_tcp_abc_l_var;
-			if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
-			    (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
-			    ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
+			/* SEARCH */	
+		} else {
+
+			if (use_search){
+				/* implement search algorithm */
+				search_update(ccv);
+			}
+			else if (V_tcp_do_rfc3465) {
 				/*
-				 * Hystart is allowed and still enabled and we are not yet
-				 * in CSS. Lets check to see if we can make a decision on
-				 * if we need to go into CSS.
+				 * In slow-start with ABC enabled and no RTO in sight?
+				 * (Must not use abc_l_var > 1 if slow starting after
+				 * an RTO. On RTO, snd_nxt = snd_una, so the
+				 * snd_nxt == snd_max check is sufficient to
+				 * handle this).
+				 *
+				 * XXXLAS: Find a way to signal SS after RTO that
+				 * doesn't rely on tcpcb vars.
 				 */
-				if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
-				    (nreno->css_current_round_minrtt != 0xffffffff) &&
-				    (nreno->css_lastround_minrtt != 0xffffffff)) {
-					uint32_t rtt_thresh;
+				uint16_t abc_val;
 
-					/* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
-					rtt_thresh = (nreno->css_lastround_minrtt >> 3);
-					if (rtt_thresh < hystart_minrtt_thresh)
-						rtt_thresh = hystart_minrtt_thresh;
-					if (rtt_thresh > hystart_maxrtt_thresh)
-						rtt_thresh = hystart_maxrtt_thresh;
-					newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
-					if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
-						/* Enter CSS */
-						nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
-						nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
-						/*
-						 * The draft (v4) calls for us to set baseline to css_current_round_min
-						 * but that can cause an oscillation. We probably shoudl be using
-						 * css_lastround_minrtt, but the authors insist that will cause
-						 * issues on exiting early. We will leave the draft version for now
-						 * but I suspect this is incorrect.
-						 */
-						nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
-						nreno->css_entered_at_round = nreno->css_current_round;
-						newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
+				if (ccv->flags & CCF_USE_LOCAL_ABC)
+					abc_val = ccv->labc;
+				else
+					abc_val = V_tcp_abc_l_var;
+				if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
+				    (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
+				    ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
+					/*
+					 * Hystart is allowed and still enabled and we are not yet
+					 * in CSS. Lets check to see if we can make a decision on
+					 * if we need to go into CSS.
+					 */
+					if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
+					    (nreno->css_current_round_minrtt != 0xffffffff) &&
+					    (nreno->css_lastround_minrtt != 0xffffffff)) {
+						uint32_t rtt_thresh;
+
+						/* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
+						rtt_thresh = (nreno->css_lastround_minrtt >> 3);
+						if (rtt_thresh < hystart_minrtt_thresh)
+							rtt_thresh = hystart_minrtt_thresh;
+						if (rtt_thresh > hystart_maxrtt_thresh)
+							rtt_thresh = hystart_maxrtt_thresh;
+						newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
+						if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
+							/* Enter CSS */
+							nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
+							nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
+							/*
+							 * The draft (v4) calls for us to set baseline to css_current_round_min
+							 * but that can cause an oscillation. We probably shoudl be using
+							 * css_lastround_minrtt, but the authors insist that will cause
+							 * issues on exiting early. We will leave the draft version for now
+							 * but I suspect this is incorrect.
+							 */
+							nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
+							nreno->css_entered_at_round = nreno->css_current_round;
+							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
+						}
 					}
 				}
-			}
-			if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
-				incr = min(ccv->bytes_this_ack,
-				    ccv->nsegs * abc_val *
-				    CCV(ccv, t_maxseg));
-			else
-				incr = min(ccv->bytes_this_ack, CCV(ccv, t_maxseg));
+				if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
+					incr = min(ccv->bytes_this_ack,
+					    ccv->nsegs * abc_val *
+					    CCV(ccv, t_maxseg));
+				else
+					incr = min(ccv->bytes_this_ack, CCV(ccv, t_maxseg));
 
-			/* Only if Hystart is enabled will the flag get set */
-			if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
-				incr /= hystart_css_growth_div;
-				newreno_log_hystart_event(ccv, nreno, 3, incr);
+				/* Only if Hystart is enabled will the flag get set */
+				if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
+					incr /= hystart_css_growth_div;
+					newreno_log_hystart_event(ccv, nreno, 3, incr);
+				}
 			}
 		}
 		/* ABC is on by default, so incr equals 0 frequently. */
