@@ -229,7 +229,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	return (0);
 
 	/* SEARCH */
-	search_reset(ccv, UNSET_BIN_DURATION_FALSE); 
+	search_reset(nreno, UNSET_BIN_DURATION_FALSE); 
 }
 
 static void
@@ -464,7 +464,7 @@ static void search_update(struct cc_var* ccv) {
 	if (now_us < nreno->search_bin_end_us) 
 		return;
 	
-	search_update_bins(ccv, now_us, rtt_us)
+	search_update_bins(ccv, now_us, rtt_us);
 
 
 	/* check if there is enough bins after shift for computing previous window */

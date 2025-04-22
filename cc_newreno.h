@@ -39,11 +39,13 @@ typedef uint32_t search_bin_t;
 #define SEARCH_EXTRA_BINS 15
 #define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
 #define SEARCH_THRESH 35
+#define search_alpha 2
 
 enum unset_bin_duration {
     UNSET_BIN_DURATION_FALSE,  // Reset bin duration
     UNSET_BIN_DURATION_TRUE    // Do not reset bin duration
 };
+
 
 
 struct newreno {
