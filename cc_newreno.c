@@ -87,6 +87,8 @@
 #include <sys/syslog.h>
 #include <netinet/khelp/h_ertt.h>
 #include <sys/time.h>
+#include <inttypes.h>
+
 
 static void	newreno_cb_destroy(struct cc_var *ccv);
 static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
@@ -123,6 +125,17 @@ struct cc_algo newreno_search_cc_algo = {
 	.cb_init = newreno_cb_init,
 	.cc_data_sz = newreno_data_sz,
 };
+
+/* SEARCH */
+static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
+	memset(nreno->search_bin, 0, sizeof(nreno->search_bin));
+	nreno->search_curr_idx = -1;
+	nreno->search_bin_end_us = 0;
+	nreno->search_scale_factor = 0;
+	nreno->search_bytes_this_bin = 0;
+	if (flag == UNSET_BIN_DURATION_FALSE)
+		nreno->search_bin_duration_us = 0;
+}
 
 static void
 newreno_log_hystart_event(struct cc_var *ccv, struct newreno *nreno, uint8_t mod, uint32_t flex1)
@@ -239,15 +252,6 @@ static uint64_t get_rtt_us(struct cc_var* ccv) {
 	return (((uint64_t)srtt) * 1000000) >> TCP_RTT_SHIFT;  // convert to microseconds
 }
 
-static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
-	memset(nreno->search_bin, 0, sizeof(nreno->search_bin));
-	nreno->search_curr_idx = -1;
-	nreno->search_bin_end_us = 0;
-	nreno->search_scale_factor = 0;
-	nreno->search_bytes_this_bin = 0;
-	if (flag == UNSET_BIN_DURATION_FALSE)
-		nreno->search_bin_duration_us = 0;
-}
 
 /* Scale bin value to fit bin size, rescale previous bins.
  * Return amount scaled.
@@ -299,7 +303,7 @@ static void search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_u
 
 }
 
-static int search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
+static void search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	struct newreno* nreno = ccv->cc_data;
 
@@ -430,7 +434,7 @@ static void search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t
 
 	CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 
-	log(LOG_INFO,  "<%p> SEARCH_INFO: [now %u] [exit condition was met [cwnd %u] [ssthresh %u]\n", ccv, now_us, CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh));
+	log(LOG_INFO,  "<%p> SEARCH_INFO: [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", ccv, now_us, CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh));
 
 }
 
