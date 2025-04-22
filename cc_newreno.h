@@ -27,7 +27,24 @@
 #ifndef _CC_NEWRENO_H
 #define _CC_NEWRENO_H
 
-#define CCALGONAME_NEWRENO "newreno"
+/* SEARCH */
+#define CCALGONAME_NEWRENO "newreno_search"
+
+#define MAX_US_INT 0xffff
+
+typedef uint32_t search_bin_t;
+
+#define SEARCH_WINDOW_SIZE_FACTOR 35
+#define SEARCH_BINS 10
+#define SEARCH_EXTRA_BINS 15
+#define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
+#define SEARCH_THRESH 35
+
+enum unset_bin_duration {
+    UNSET_BIN_DURATION_FALSE,  // Reset bin duration
+    UNSET_BIN_DURATION_TRUE    // Do not reset bin duration
+};
+
 
 struct newreno {
 	uint32_t beta;
@@ -42,7 +59,18 @@ struct newreno {
 	uint32_t css_fas_at_css_entry;
 	uint32_t css_lowrtt_fas;
 	uint32_t css_last_fas;
+
+	/* SEARCH */
+	uint32_t search_bin_duration_us;			/* duration of each bin in microsecond */
+	int32_t  search_curr_idx;					/* total number of bins */
+	uint64_t search_bin_end_us;					/* end time of the latest bin in microsecond */
+	search_bin_t search_bin[SEARCH_TOTAL_BINS];	/* array to keep bytes for bins */
+	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
+	uint32_t search_bytes_this_bin;				/* bytes_acked during this bin*/
 };
+
+/* SEARCH */
+#define SEARCH_BIN(ccv, index) ((struct newreno*)(ccv)->cc_data)->search_bin[(index) % SEARCH_TOTAL_BINS]
 
 struct cc_newreno_opts {
 	int		name;
