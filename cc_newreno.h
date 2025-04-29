@@ -34,7 +34,10 @@
 
 typedef uint32_t search_bin_t;
 
-#define V_use_search 1
+// #define V_use_search 1
+VNET_DECLARE(uint8_t, use_search);
+#define V_use_search VNET(use_search)
+
 #define V_cwnd_rollback 0
 
 #define SEARCH_WINDOW_SIZE_FACTOR 35

@@ -105,11 +105,7 @@ VNET_DECLARE(uint32_t, newreno_beta_ecn);
 #define V_newreno_beta_ecn VNET(newreno_beta_ecn)
 
 /* SEARCH */
-
-//VNET_DECLARE(uint8_t, use_search);
-//#define V_use_search VNET(use_search)
-//VNET_DECLARE(uint8_t, cwnd_rollback);
-//#define V_cwnd_rollback VNET(cwnd_rollback)
+VNET_DEFINE(uint8_t, use_search) = 1; /* 1 = enabled by default */
 
 struct cc_algo newreno_search_cc_algo = {
 	.name = "newreno_search",
@@ -570,10 +566,14 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 		} else {
 
 			if (V_use_search){
+				log(LOG_INFO, "<%p> SEARCH updates in slow start\n");
+
 				/* implement search algorithm */
 				search_update(ccv);
+				nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 			}
 			else if (V_tcp_do_rfc3465) {
+				log(LOG_INFO, "<%p> HyStart++ updates in slow start\n");
 				/*
 				 * In slow-start with ABC enabled and no RTO in sight?
 				 * (Must not use abc_l_var > 1 if slow starting after
