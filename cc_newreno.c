@@ -87,8 +87,6 @@
 #include <sys/syslog.h>
 #include <netinet/khelp/h_ertt.h>
 #include <sys/time.h>
-#include <inttypes.h>
-
 
 static void	newreno_cb_destroy(struct cc_var *ccv);
 static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
@@ -107,10 +105,11 @@ VNET_DECLARE(uint32_t, newreno_beta_ecn);
 #define V_newreno_beta_ecn VNET(newreno_beta_ecn)
 
 /* SEARCH */
-VNET_DECLARE(uint8_t, use_search);
-#define V_use_search VNET(use_search)
-VNET_DECLARE(uint8_t, cwnd_rollback);
-#define V_cwnd_rollback VNET(cwnd_rollback)
+
+//VNET_DECLARE(uint8_t, use_search);
+//#define V_use_search VNET(use_search)
+//VNET_DECLARE(uint8_t, cwnd_rollback);
+//#define V_cwnd_rollback VNET(cwnd_rollback)
 
 struct cc_algo newreno_search_cc_algo = {
 	.name = "newreno_search",

@@ -34,6 +34,9 @@
 
 typedef uint32_t search_bin_t;
 
+#define V_use_search 1
+#define V_cwnd_rollback 0
+
 #define SEARCH_WINDOW_SIZE_FACTOR 35
 #define SEARCH_BINS 10
 #define SEARCH_EXTRA_BINS 15
