@@ -16,3 +16,8 @@ sudo kludload /usr/obj/home/FreeBSD-src/src/amd64.amd64/sys/modules/cc/cc_newren
 4. Set the cc algorithm to your desired algorithm:
 sudo sysctl net.inet.tcp.cc.algorithm=newreno_search
 
+
+If needed:
+ifconfig nic_name -tso4 -tso6 mtu 1360
+sudo sysctl net.inet.tcp_sendbuf_max=209715200
+sudo sysctl net.inet.tcp_sendbuf_inc=262144
