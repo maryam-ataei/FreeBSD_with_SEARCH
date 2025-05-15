@@ -1,0 +1,18 @@
+In Freebsd:
+1. Edit module:
+/home/FreeBSD-src/src/sys/netinet/cc/cc-newreno-search.c
+
+2. Make module:
+cd /home/FreeBSD-src/src/sys/modules/cc/cc_newreno_search
+sudo make clean
+sudo make
+
+3. Load module:
+sudo kldload /usr/obj/home/FreeBSD-src/src/amd64.amd64/sys/modules/cc/cc_newreno_search/cc_newreno_search.ko
+
+! Unload module:
+sudo kludload /usr/obj/home/FreeBSD-src/src/amd64.amd64/sys/modules/cc/cc_newreno_search/cc_newreno_search.ko
+
+4. Set the cc algorithm to your desired algorithm:
+sudo sysctl net.inet.tcp.cc.algorithm=newreno_search
+
