@@ -105,7 +105,9 @@
  #define V_newreno_beta_ecn VNET(newreno_beta_ecn)
  
  /* SEARCH */
-//  VNET_DEFINE(uint8_t, use_search) = 1; /* 1 = enabled by default */
+//VNET_DEFINE(uint8_t, use_searchs) = 1; /* 1 = enabled by default */
+//# define V_use_searchs VNET(use_searchs)
+//SYSCTL_VNET_INT(_net_inet_tcp_cc_newreno, OID_AUTO, use_searchs, CTLFLAG_RW, &VNET_NAME(use_searchs), 1, "Enable SEARCH algorithm in NewReno");
 
  struct cc_algo newreno_search_cc_algo = {
 	 .name = "newreno_search",
@@ -317,7 +319,7 @@
  
 	 initial_rtt = nreno->search_bin_duration_us * SEARCH_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
-	 log(LOG_INFO, "SEARCH_INFO: Update bins passed_bins %d initial_rtt %lu\n", passed_bins, initial_rtt);
+	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu] Update bins [passed_bins %d] [initial_rtt %lu]\n", ccv, now_us, passed_bins, initial_rtt);
  
 	 /* Need reset due to missed bins*/
 	 if (passed_bins > search_alpha * (initial_rtt / nreno->search_bin_duration_us)) {
@@ -430,7 +432,11 @@
  
 	 CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
  
-	 log(LOG_INFO,  "<%p> SEARCH_INFO: [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", ccv, now_us, CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh));
+	 log(LOG_INFO,  "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", 
+			 ccv, 
+			 now_us, 
+			 CCV(ccv, snd_cwnd), 
+			 CCV(ccv, snd_ssthresh));
  
  }
  
@@ -446,10 +452,7 @@
 	int64_t prev_delv_bytes = 0;	
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
- 
-	log(LOG_INFO, "<%p> SEARCH_INFO_pre: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n", 
-		ccv, now_us, nreno->search_bin_duration_us, nreno->search_bin_end_us, curr_delv_bytes, prev_delv_bytes, norm_diff, nreno->search_scale_factor, nreno->search_curr_idx);
-	
+
 	nreno->search_bytes_this_bin += ccv->bytes_this_ack;
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
@@ -461,7 +464,6 @@
 
 	// Wait until reach the bin boundary,
 	if (now_us < nreno->search_bin_end_us) {
-		log(LOG_INFO, "SEARCH_INFO: not reach bin boundary\n");
 		return;
 	}
 	
@@ -494,9 +496,16 @@
 		}
 	}
  
-	log(LOG_INFO, "<%p> SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n", 
-					ccv, now_us, nreno->search_bin_duration_us, nreno->search_bin_end_us, curr_delv_bytes, prev_delv_bytes, norm_diff, nreno->search_scale_factor, nreno->search_curr_idx);
- 
+	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
+	ccv, 
+	now_us, 
+	nreno->search_bin_duration_us, 
+	nreno->search_bin_end_us, 
+	curr_delv_bytes,
+	prev_delv_bytes,
+	norm_diff,
+	nreno->search_scale_factor,
+	nreno->search_curr_idx);
  }
  
  static void
@@ -506,14 +515,15 @@
  
 	 nreno = ccv->cc_data;
  
-	 log(LOG_INFO, "<%p> ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes %u] [curack %u] [cwnd %u] [ssthresh %u]\n", 
+	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_pkt %u] [ssthresh %u] [mss %u]\n", 
 		 ccv, 
 		 get_now_us(), 
 		 get_rtt_us(ccv),
 		 nreno->search_bytes_this_bin,
 		 ccv->curack,
 		 CCV(ccv, snd_cwnd),
-		 CCV(ccv, snd_ssthresh)
+		 CCV(ccv, snd_ssthresh),
+		CCV(ccv, t_maxseg)
 	 );
  
 	 if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
@@ -572,7 +582,7 @@
 		 } else {
  
 			 if (V_use_search){
-				 log(LOG_INFO, "SEARCH_INFO: SEARCH updates in SS\n");
+				 //log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: SEARCH updates in SS\n", ccv);
  
 				 /* implement search algorithm */
 				 search_update(ccv);
@@ -670,7 +680,9 @@
 		 newreno_log_hystart_event(ccv, nreno, 12, CCV(ccv, snd_ssthresh));
 	 }
 	 /* SEARCH */
-	 search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+
+	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: After idle [now %lu]\n", ccv, get_now_us()); 
+	search_reset(nreno, UNSET_BIN_DURATION_FALSE);
  }
  
  /*
@@ -710,6 +722,12 @@
  
 	 switch (type) {
 	 case CC_NDUPACK:
+		 /* SEARCH */
+		 if (V_use_search){
+			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: Loss happens at [now %lu]\n", ccv, get_now_us()); 
+		 	search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+		 }
+
 		 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) {
 			 /* Make sure the flags are all off we had a loss */
 			 nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
@@ -729,6 +747,12 @@
 		 }
 		 break;
 	 case CC_ECN:
+		 /* SEARCH */
+		 if (V_use_search){
+			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: ECN flag happens at [now %lu]\n", ccv, get_now_us()); 
+		 	search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+		 }
+		 
 		 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) {
 			 /* Make sure the flags are all off we had a loss */
 			 nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
@@ -742,6 +766,12 @@
 		 }
 		 break;
 	 case CC_RTO:
+		 /* SEARCH */
+		 if (V_use_search){
+			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: RTO happens at [now %lu]\n", ccv, get_now_us()); 
+		 	search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+		 }
+
 		 CCV(ccv, snd_ssthresh) = max(min(CCV(ccv, snd_wnd),
 						  CCV(ccv, snd_cwnd)) / 2 / mss,
 						  2) * mss;
