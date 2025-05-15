@@ -500,7 +500,7 @@
 	ccv, 
 	now_us, 
 	nreno->search_bin_duration_us, 
-	nreno->search_bin_end_us, 
+	ccv->bytes_this_ack, 
 	curr_delv_bytes,
 	prev_delv_bytes,
 	norm_diff,
