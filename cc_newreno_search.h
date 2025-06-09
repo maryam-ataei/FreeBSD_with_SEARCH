@@ -45,7 +45,7 @@
  #define SEARCH_EXTRA_BINS 15
  #define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
  #define SEARCH_THRESH 35
- #define search_alpha 2
+ #define search_alpha 200
  
  enum unset_bin_duration {
 	 UNSET_BIN_DURATION_FALSE,  // Reset bin duration

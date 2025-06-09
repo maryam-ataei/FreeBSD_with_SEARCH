@@ -248,7 +248,6 @@
 	 return (((uint64_t)srtt) * tick) >> TCP_RTT_SHIFT;  // convert to microseconds
  }
  
- 
  /* Scale bin value to fit bin size, rescale previous bins.
   * Return amount scaled.
   */
@@ -452,12 +451,17 @@
 	int64_t prev_delv_bytes = 0;	
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
+	//uint64_t delta_bytes = 0;
+	//uint64_t mb_per_sec = 0;
+	//uint64_t delta_bytes_one_bin = 0;
+	//uint64_t mb_per_sec_one_bin = 0;
+
 
 	nreno->search_bytes_this_bin += ccv->bytes_this_ack;
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
 	if (nreno->search_curr_idx < 0) {
-		log(LOG_INFO, "SEARCH_INFO: Inite bin\n");
+		//log(LOG_INFO, "SEARCH_INFO: Inite bin\n");
 		search_init_bins(ccv, now_us, rtt_us);
 		return;
 	}
@@ -491,40 +495,44 @@
 			norm_diff = ((2 * prev_delv_bytes) - curr_delv_bytes) * 100 / (2 * prev_delv_bytes);
 
 			/* check for exit condition */
-			if ((2 * prev_delv_bytes) >= curr_delv_bytes && norm_diff >= SEARCH_THRESH)
+			if ((2 * prev_delv_bytes) >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
+				/*delta_bytes = curr_delv_bytes - prev_delv_bytes;
+				if (curr_delv_bytes < prev_delv_bytes)
+				    delta_bytes = 0;  // prevent negative bitrate due to jitter
+						      
+				mb_per_sec = (delta_bytes / rtt_us) * 8; //Mb/s
+
+				delta_bytes_one_bin = SEARCH_BIN(ccv, nreno->search_curr_idx) - SEARCH_BIN(ccv, prev_idx);
+				if (SEARCH_BIN(ccv, nreno->search_curr_idx) < SEARCH_BIN(ccv, prev_idx))
+					delta_bytes_one_bin = 0;
+
+				mb_per_sec_one_bin = (delta_bytes_one_bin / rtt_us) * 8; //Mb/s
+
+				log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_EXIT_RATE: [now %lu] [delta_bytes %lu] [rtt_us %lu] [rate %lu MB/s] [delta_bytes_one_bin %lu] [mb_per_sec_one_bin %lu]\n" ,ccv, now_us, delta_bytes, rtt_us, mb_per_sec, delta_bytes_one_bin, mb_per_sec_one_bin);*/
+				
 				search_exit_slow_start(ccv, now_us, rtt_us);
+			}
 		}
+
+		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
+			ccv, 
+			now_us, 
+			nreno->search_bin_duration_us, 
+			nreno->search_bin_end_us, 
+			curr_delv_bytes,
+			prev_delv_bytes,
+			norm_diff,
+			nreno->search_scale_factor,
+			nreno->search_curr_idx);
 	}
  
-	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
-	ccv, 
-	now_us, 
-	nreno->search_bin_duration_us, 
-	ccv->bytes_this_ack, 
-	curr_delv_bytes,
-	prev_delv_bytes,
-	norm_diff,
-	nreno->search_scale_factor,
-	nreno->search_curr_idx);
  }
  
- static void
- newreno_ack_received(struct cc_var *ccv, uint16_t type)
- {
+ static void newreno_ack_received(struct cc_var *ccv, uint16_t type) {
+
 	 struct newreno *nreno;
  
 	 nreno = ccv->cc_data;
- 
-	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_pkt %u] [ssthresh %u] [mss %u]\n", 
-		 ccv, 
-		 get_now_us(), 
-		 get_rtt_us(ccv),
-		 nreno->search_bytes_this_bin,
-		 ccv->curack,
-		 CCV(ccv, snd_cwnd),
-		 CCV(ccv, snd_ssthresh),
-		CCV(ccv, t_maxseg)
-	 );
  
 	 if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
 		 (ccv->flags & CCF_CWND_LIMITED)) {
@@ -582,14 +590,13 @@
 		 } else {
  
 			 if (V_use_search){
-				 //log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: SEARCH updates in SS\n", ccv);
- 
+
 				 /* implement search algorithm */
 				 search_update(ccv);
 				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 			 }
 			 else if (V_tcp_do_rfc3465) {
-				 log(LOG_INFO, "HyStart++ updates in slow start\n");
+				 // log(LOG_INFO, "HyStart++ updates in slow start\n");
 				 /*
 				  * In slow-start with ABC enabled and no RTO in sight?
 				  * (Must not use abc_l_var > 1 if slow starting after
@@ -652,7 +659,7 @@
  
 				 /* Only if Hystart is enabled will the flag get set */
 				 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
-					 incr /= hystart_css_growth_div;
+					 // incr /= hystart_css_growth_div;
 					 newreno_log_hystart_event(ccv, nreno, 3, incr);
 				 }
 			 }
@@ -662,6 +669,16 @@
 			 CCV(ccv, snd_cwnd) = min(cw + incr,
 				 TCP_MAXWIN << CCV(ccv, snd_scale));
 	 }
+	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_pkt %u] [ssthresh %u] [mss %u]\n", 
+		 ccv, 
+		 get_now_us(), 
+		 get_rtt_us(ccv),
+		 nreno->search_bytes_this_bin,
+		 ccv->curack,
+		 CCV(ccv, snd_cwnd),
+		 CCV(ccv, snd_ssthresh),
+		CCV(ccv, t_maxseg)
+	 );
  }
  
  static void
@@ -680,9 +697,8 @@
 		 newreno_log_hystart_event(ccv, nreno, 12, CCV(ccv, snd_ssthresh));
 	 }
 	 /* SEARCH */
-
-	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: After idle [now %lu]\n", ccv, get_now_us()); 
-	search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+	 log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: After idle [now %lu]\n", ccv, get_now_us()); 
+	 search_reset(nreno, UNSET_BIN_DURATION_FALSE);
  }
  
  /*
@@ -869,14 +885,14 @@
 			  * and give us hystart_css_rounds more rounds.
 			  */
 			 if (ccv->flags & CCF_HYSTART_CONS_SSTH) {
-				 CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
+				 //CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
 			 } else {
-				 CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
+				// CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
 			 }
-			 CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
+			 //CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
 			 nreno->css_entered_at_round = round_cnt;
 		 } else {
-			 CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
+			 //CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 			 /* Turn off the CSS flag */
 			 nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_IN_CSS;
 			 /* Disable use of CSS in the future except long idle  */
@@ -921,7 +937,6 @@
 	 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)
 		 newreno_log_hystart_event(ccv, nreno, 5, usec_rtt);
  }
- 
  SYSCTL_DECL(_net_inet_tcp_cc_newreno);
  SYSCTL_NODE(_net_inet_tcp_cc, OID_AUTO, newreno,
 	 CTLFLAG_RW | CTLFLAG_MPSAFE, NULL,
