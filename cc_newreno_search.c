@@ -669,7 +669,7 @@
 			 CCV(ccv, snd_cwnd) = min(cw + incr,
 				 TCP_MAXWIN << CCV(ccv, snd_scale));
 	 }
-	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_pkt %u] [ssthresh %u] [mss %u]\n", 
+	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u]\n", 
 		 ccv, 
 		 get_now_us(), 
 		 get_rtt_us(ccv),
