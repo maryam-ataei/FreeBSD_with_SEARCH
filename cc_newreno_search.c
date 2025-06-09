@@ -673,7 +673,7 @@
 		 ccv, 
 		 get_now_us(), 
 		 get_rtt_us(ccv),
-		 nreno->search_bytes_this_bin,
+		 ccv->bytes_this_ack,
 		 ccv->curack,
 		 CCV(ccv, snd_cwnd),
 		 CCV(ccv, snd_ssthresh),
