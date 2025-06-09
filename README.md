@@ -1,7 +1,5 @@
 # FreeBSD with TCP SEARCH
 
-# FreeBSD with TCP SEARCH
-
 This repository includes the implementation of **TCP SEARCH (Slow start Exit At Right CHokepoint)** in FreeBSD.
 
 ## Files Included
