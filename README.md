@@ -16,6 +16,7 @@ The code is based on **FreeBSD 14.2**.
 ## Purpose
 
 TCP SEARCH improves slow start behavior by exiting at the appropriate chokepoint to improve network performance.
+Learn more about the SEARCH algorithm here: [https://search-ss.wpi.edu/](https://search-ss.wpi.edu/)
 
 ## Usage
 
