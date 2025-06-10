@@ -531,9 +531,6 @@
  static void newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 
 	 struct newreno *nreno;
-
-	 struct tcpcb *tp= ccv->ccvc.tcp;;
-
  
 	 nreno = ccv->cc_data;
  
@@ -673,7 +670,7 @@
 				 TCP_MAXWIN << CCV(ccv, snd_scale));
 	 }
 
-	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_pkt %u] [ssthresh %u] [mss %u] [tp_total_bytes_acked %u] [tp_cwnd %u] [tp_ssthresh %u] [tp_send_nxt %u] [tp_init_seq_sent %u]\n", 
+	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u]\n", 
 		 ccv, 
 		 get_now_us(), 
 		 get_rtt_us(ccv),
@@ -682,11 +679,6 @@
 		 CCV(ccv, snd_cwnd),
 		 CCV(ccv, snd_ssthresh),
 		 CCV(ccv, t_maxseg),
-		 tp->t_bytes_acked,
-		 tp->snd_cwnd,
-		 tp->snd_ssthresh,
-		 CCV(ccv, snd_nxt),
-		 tp->iss
 	 );
  }
  
