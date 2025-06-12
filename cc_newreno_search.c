@@ -678,7 +678,7 @@
 		 ccv->curack,
 		 CCV(ccv, snd_cwnd),
 		 CCV(ccv, snd_ssthresh),
-		 CCV(ccv, t_maxseg),
+		 CCV(ccv, t_maxseg)
 	 );
  }
  
