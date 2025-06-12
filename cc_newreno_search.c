@@ -588,13 +588,7 @@
  
 			 /* SEARCH */	
 		 } else {
- 
-			 if (V_use_search){
 
-				 /* implement search algorithm */
-				 search_update(ccv);
-				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
-			 }
 			 if (V_tcp_do_rfc3465) {
 				 // log(LOG_INFO, "HyStart++ updates in slow start\n");
 				 /*
@@ -662,6 +656,12 @@
 					 // incr /= hystart_css_growth_div;
 					 newreno_log_hystart_event(ccv, nreno, 3, incr);
 				 }
+			 }
+
+			 if (V_use_search){
+				 /* implement search algorithm */
+				 search_update(ccv);
+				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 			 }
 		 }
 		 /* ABC is on by default, so incr equals 0 frequently. */
