@@ -595,7 +595,7 @@
 				 search_update(ccv);
 				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 			 }
-			 else if (V_tcp_do_rfc3465) {
+			 if (V_tcp_do_rfc3465) {
 				 // log(LOG_INFO, "HyStart++ updates in slow start\n");
 				 /*
 				  * In slow-start with ABC enabled and no RTO in sight?
@@ -613,43 +613,43 @@
 					 abc_val = ccv->labc;
 				 else
 					 abc_val = V_tcp_abc_l_var;
-				 if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
-					 (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
-					 ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
-					 /*
-					  * Hystart is allowed and still enabled and we are not yet
-					  * in CSS. Lets check to see if we can make a decision on
-					  * if we need to go into CSS.
-					  */
-					 if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
-						 (nreno->css_current_round_minrtt != 0xffffffff) &&
-						 (nreno->css_lastround_minrtt != 0xffffffff)) {
-						 uint32_t rtt_thresh;
+				 // if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
+					//  (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
+					//  ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
+					//  /*
+					//   * Hystart is allowed and still enabled and we are not yet
+					//   * in CSS. Lets check to see if we can make a decision on
+					//   * if we need to go into CSS.
+					//   */
+					//  if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
+					// 	 (nreno->css_current_round_minrtt != 0xffffffff) &&
+					// 	 (nreno->css_lastround_minrtt != 0xffffffff)) {
+					// 	 uint32_t rtt_thresh;
  
-						 /* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
-						 rtt_thresh = (nreno->css_lastround_minrtt >> 3);
-						 if (rtt_thresh < hystart_minrtt_thresh)
-							 rtt_thresh = hystart_minrtt_thresh;
-						 if (rtt_thresh > hystart_maxrtt_thresh)
-							 rtt_thresh = hystart_maxrtt_thresh;
-						 newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
-						 if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
-							 /* Enter CSS */
-							 nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
-							 nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
-							 /*
-							  * The draft (v4) calls for us to set baseline to css_current_round_min
-							  * but that can cause an oscillation. We probably shoudl be using
-							  * css_lastround_minrtt, but the authors insist that will cause
-							  * issues on exiting early. We will leave the draft version for now
-							  * but I suspect this is incorrect.
-							  */
-							 nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
-							 nreno->css_entered_at_round = nreno->css_current_round;
-							 newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
-						 }
-					 }
-				 }
+					// 	 /* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
+					// 	 rtt_thresh = (nreno->css_lastround_minrtt >> 3);
+					// 	 if (rtt_thresh < hystart_minrtt_thresh)
+					// 		 rtt_thresh = hystart_minrtt_thresh;
+					// 	 if (rtt_thresh > hystart_maxrtt_thresh)
+					// 		 rtt_thresh = hystart_maxrtt_thresh;
+					// 	 newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
+					// 	 if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
+					// 		 /* Enter CSS */
+					// 		 nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
+					// 		 nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
+					// 		 /*
+					// 		  * The draft (v4) calls for us to set baseline to css_current_round_min
+					// 		  * but that can cause an oscillation. We probably shoudl be using
+					// 		  * css_lastround_minrtt, but the authors insist that will cause
+					// 		  * issues on exiting early. We will leave the draft version for now
+					// 		  * but I suspect this is incorrect.
+					// 		  */
+					// 		 nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
+					// 		 nreno->css_entered_at_round = nreno->css_current_round;
+					// 		 newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
+					// 	 }
+					//  }
+				 // }
 				 if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
 					 incr = min(ccv->bytes_this_ack,
 						 ccv->nsegs * abc_val *
