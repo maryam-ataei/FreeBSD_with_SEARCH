@@ -226,6 +226,8 @@
 	 nreno->css_last_fas = 0;
 	 /* SEARCH */
 	 search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+	 // if (V_use_search)
+  //   		nreno->newreno_flags &= ~(CC_NEWRENO_HYSTART_ENABLED | CC_NEWRENO_HYSTART_IN_CSS);
 	 return (0);
  }
  
