@@ -28,7 +28,6 @@
  #define _CC_NEWRENO_H
  
  /* SEARCH_begin */
-
  #define CCALGONAME_NEWRENO "newreno_search"
  #define SEARCH_WINDOW_SIZE_FACTOR 35
  #define SEARCH_BINS 10
