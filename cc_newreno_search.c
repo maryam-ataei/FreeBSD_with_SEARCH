@@ -1,5 +1,5 @@
-// do n0ot reset cumulative acked values
-
+// do not reset cumulative acked values
+// set a;pha to max_int
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
