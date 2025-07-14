@@ -1,3 +1,5 @@
+// do n0ot reset cumulative acked values
+
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
