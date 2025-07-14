@@ -37,7 +37,8 @@
  #define V_use_search 1
 //  VNET_DECLARE(uint8_t, use_search);
 //  #define V_use_search VNET(use_search)
- 
+
+// need to add comment
  #define V_cwnd_rollback 0
  
  #define SEARCH_WINDOW_SIZE_FACTOR 35
@@ -45,11 +46,12 @@
  #define SEARCH_EXTRA_BINS 15
  #define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
  #define SEARCH_THRESH 35
+# do: make capital
  #define search_alpha 200
  
- enum unset_bin_duration {
-	 UNSET_BIN_DURATION_FALSE,  // Reset bin duration
-	 UNSET_BIN_DURATION_TRUE    // Do not reset bin duration
+ enum unset_bin_duration { //do: reset_bin_duration
+	 UNSET_BIN_DURATION_FALSE,  // Reset bin duration   //do: RESET_BIN_DURATION_TRUE,
+	 UNSET_BIN_DURATION_TRUE    // Do not reset bin duration //do: RESET_BIN_DURATION_FALSE
  };
  
  
@@ -69,13 +71,13 @@
 	 uint32_t css_last_fas;
  
 	 /* SEARCH */
-	 uint32_t search_bin_duration_us;			/* duration of each bin in microsecond */
-	 int32_t  search_curr_idx;					/* total number of bins */
-	 uint64_t search_bin_end_us;					/* end time of the latest bin in microsecond */
+	 uint32_t search_bin_duration_us;    /* duration of each bin in microsecond */
+	 int32_t  search_curr_idx;          /* total number of bins */
+	 uint64_t search_bin_end_us;        /* end time of the latest bin in microseconds */
 	 search_bin_t search_bin[SEARCH_TOTAL_BINS];	/* array to keep bytes for bins */
 	 uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
 	 uint32_t search_bytes_this_bin;				/* bytes_acked during this bin*/
- 	uint32_t search_reset_flag;
+ 	 uint32_t search_reset_flag;
  };
  
  /* SEARCH */
