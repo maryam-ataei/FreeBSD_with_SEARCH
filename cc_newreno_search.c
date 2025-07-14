@@ -236,7 +236,7 @@
 	 free(ccv->cc_data, M_CC_MEM);
  }
  
- /* SEARCH_end */
+ /* SEARCH_begin */
  static uint64_t get_now_us(void) {
 	 struct timeval tv;
 	 getmicrouptime(&tv);  // Uptime since boot
