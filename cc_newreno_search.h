@@ -27,33 +27,25 @@
  #ifndef _CC_NEWRENO_H
  #define _CC_NEWRENO_H
  
- /* SEARCH */
- #define CCALGONAME_NEWRENO "newreno_search"
- 
- #define MAX_US_INT 0xffff
- 
- typedef uint32_t search_bin_t;
- 
- #define V_use_search 1
-//  VNET_DECLARE(uint8_t, use_search);
-//  #define V_use_search VNET(use_search)
+ /* SEARCH_begin */
 
-// need to add comment
- #define V_cwnd_rollback 0
- 
+ #define CCALGONAME_NEWRENO "newreno_search"
  #define SEARCH_WINDOW_SIZE_FACTOR 35
  #define SEARCH_BINS 10
  #define SEARCH_EXTRA_BINS 15
  #define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
  #define SEARCH_THRESH 35
-# do: make capital
- #define search_alpha 200
+ #define MAX_US_INT 0xffff
+ #define SEARCH_ALPHA 200 // If missed bins > SEARCH_ALPHA bins, SEARCH reset
+ #define V_CWND_ROLLBACK 0
+
+ typedef uint32_t search_bin_t;
  
- enum unset_bin_duration { //do: reset_bin_duration
-	 UNSET_BIN_DURATION_FALSE,  // Reset bin duration   //do: RESET_BIN_DURATION_TRUE,
-	 UNSET_BIN_DURATION_TRUE    // Do not reset bin duration //do: RESET_BIN_DURATION_FALSE
+ enum reset_bin_duration { 
+	 RESET_BIN_DURATION_TRUE,  // Reset bin duration   
+	 RESET_BIN_DURATION_FALSE    // Do not reset bin duration
  };
- 
+ /* SEARCH_end */
  
  
  struct newreno {
@@ -70,19 +62,19 @@
 	 uint32_t css_lowrtt_fas;
 	 uint32_t css_last_fas;
  
-	 /* SEARCH */
-	 uint32_t search_bin_duration_us;    /* duration of each bin in microsecond */
-	 int32_t  search_curr_idx;          /* total number of bins */
-	 uint64_t search_bin_end_us;        /* end time of the latest bin in microseconds */
-	 search_bin_t search_bin[SEARCH_TOTAL_BINS];	/* array to keep bytes for bins */
-	 uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
-	 uint32_t search_bytes_this_bin;				/* bytes_acked during this bin*/
+	 /* SEARCH_begin */
+	 uint32_t search_bin_duration_us;                /* duration of each bin in microsecond */
+	 int32_t  search_curr_idx;                       /* total number of bins */
+	 uint64_t search_bin_end_us;                     /* end time of the latest bin in microseconds */
+	 search_bin_t search_bin[SEARCH_TOTAL_BINS];	 /* array to keep bytes for bins */
+	 uint8_t search_scale_factor;		         /* scale factor to fit the value with bin size */
+	 uint32_t search_bytes_this_bin;		 /* bytes_acked during this bin */
  	 uint32_t search_reset_flag;
  };
  
- /* SEARCH */
  #define SEARCH_BIN(ccv, index) ((struct newreno*)(ccv)->cc_data)->search_bin[(index) % SEARCH_TOTAL_BINS]
- 
+ /* SEARCH_end */
+
  struct cc_newreno_opts {
 	 int		name;
 	 uint32_t	val;
