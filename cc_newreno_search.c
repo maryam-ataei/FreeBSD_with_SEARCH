@@ -323,7 +323,7 @@
 	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu] Update bins [passed_bins %d] [initial_rtt %lu]\n", ccv, now_us, passed_bins, initial_rtt);
  
 	 /* Need reset due to missed bins*/
-	 if (passed_bins > search_alpha * (initial_rtt / nreno->search_bin_duration_us)) {
+	 if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
  
 		 /* Update bin_value before reset to fill the first bin after reset by whole acked bytes until this time*/
 		 if (nreno->search_curr_idx == 0) 
@@ -410,7 +410,7 @@
 	  * to the updated congestion window to finalize the rollback.
 	  */
  
-	 if (V_cwnd_rollback) {
+	 if (V_CWND_ROLLBACK) {
  
 		 initial_rtt = nreno->search_bin_duration_us * SEARCH_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 		 cong_idx = nreno->search_curr_idx - ((2 * initial_rtt) / nreno->search_bin_duration_us);
