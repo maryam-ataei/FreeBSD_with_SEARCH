@@ -41,7 +41,7 @@
  typedef uint32_t search_bin_t;
  
  enum reset_bin_duration { 
-	 RESET_BIN_DURATION_TRUE,  // Reset bin duration   
+	 RESET_BIN_DURATION_TRUE,    // Reset bin duration   
 	 RESET_BIN_DURATION_FALSE    // Do not reset bin duration
  };
  /* SEARCH_end */
