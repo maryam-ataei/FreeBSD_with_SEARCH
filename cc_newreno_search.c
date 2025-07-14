@@ -638,7 +638,6 @@
 			 if (V_use_search){
 				 /* implement search algorithm */
 				 search_update(ccv);
-				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 			 }
 		 }
 		 /* SEARCH_end */
