@@ -35,7 +35,7 @@
  #define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
  #define SEARCH_THRESH 35
  #define MAX_US_INT 0xffff
- #define SEARCH_ALPHA 200 // If missed bins > SEARCH_ALPHA bins, SEARCH reset
+ #define SEARCH_ALPHA MAX_US_INT // If missed bins > SEARCH_ALPHA bins, SEARCH reset (This is in progress...)
  #define V_CWND_ROLLBACK 0
 
  typedef uint32_t search_bin_t;
