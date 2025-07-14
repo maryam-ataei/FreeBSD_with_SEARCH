@@ -453,7 +453,6 @@
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
 	if (nreno->search_curr_idx < 0) {
-		//log(LOG_INFO, "SEARCH_INFO: Inite bin\n");
 		search_init_bins(ccv, now_us, rtt_us);
 		return;
 	}
@@ -566,7 +565,6 @@
 		 } else {
 
 			 if (V_tcp_do_rfc3465) {
-				 // log(LOG_INFO, "HyStart++ updates in slow start\n");
 				 /*
 				  * In slow-start with ABC enabled and no RTO in sight?
 				  * (Must not use abc_l_var > 1 if slow starting after
