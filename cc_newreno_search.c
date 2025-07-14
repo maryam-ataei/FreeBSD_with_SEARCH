@@ -82,7 +82,7 @@
  #include <netinet/tcp_hpts.h>
  #include <netinet/cc/cc.h>
  #include <netinet/cc/cc_module.h>
- /* SEARCH */
+ /* SEARCH */ //do: add end for change
  #include <netinet/cc/cc_newreno_search.h>
  #include <sys/syslog.h>
  #include <netinet/khelp/h_ertt.h>
@@ -95,7 +95,7 @@
  static int newreno_ctl_output(struct cc_var *ccv, struct sockopt *sopt, void *buf);
  static void	newreno_newround(struct cc_var *ccv, uint32_t round_cnt);
  static void	newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32_t fas);
- static 	int	newreno_cb_init(struct cc_var *ccv, void *);
+ static int	newreno_cb_init(struct cc_var *ccv, void *);
  static size_t	newreno_data_sz(void);
  
  
@@ -109,6 +109,7 @@
 //# define V_use_searchs VNET(use_searchs)
 //SYSCTL_VNET_INT(_net_inet_tcp_cc_newreno, OID_AUTO, use_searchs, CTLFLAG_RW, &VNET_NAME(use_searchs), 1, "Enable SEARCH algorithm in NewReno");
 
+/* SEARCH */
  struct cc_algo newreno_search_cc_algo = {
 	 .name = "newreno_search",
 	 .cb_destroy = newreno_cb_destroy,
