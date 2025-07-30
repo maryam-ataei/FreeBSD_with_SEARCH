@@ -18,6 +18,8 @@ sudo sysctl net.inet.tcp.cc.algorithm=newreno_search
 
 
 If needed:
+sysctl net.inet.tcp.functions_default=rack
+sysctl net.inet.tcp.hostcache.enable=0
 ifconfig nic_name -tso4 -tso6 mtu 1360
 sudo sysctl net.inet.tcp_sendbuf_max=209715200
 sudo sysctl net.inet.tcp_sendbuf_inc=262144
