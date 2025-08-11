@@ -138,7 +138,6 @@
 	 nreno->search_bin_end_us = 0;
 	 nreno->search_scale_factor = 0;
 	 nreno->search_bytes_this_bin = 0;
-	 nreno->search_reset_flag = 0;
 	 if (flag == RESET_BIN_DURATION_TRUE)
 		 nreno->search_bin_duration_us = 0;
  }
