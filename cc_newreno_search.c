@@ -1,5 +1,3 @@
-// do not reset cumulative acked values
-// set a;pha to max_int
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
@@ -84,7 +82,7 @@
  #include <netinet/tcp_hpts.h>
  #include <netinet/cc/cc.h>
  #include <netinet/cc/cc_module.h>
- /* SEARCH */ //do: add end for change
+ /* SEARCH */
  #include <netinet/cc/cc_newreno_search.h>
  #include <sys/syslog.h>
  #include <netinet/khelp/h_ertt.h>
@@ -97,7 +95,7 @@
  static int newreno_ctl_output(struct cc_var *ccv, struct sockopt *sopt, void *buf);
  static void	newreno_newround(struct cc_var *ccv, uint32_t round_cnt);
  static void	newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32_t fas);
- static int	newreno_cb_init(struct cc_var *ccv, void *);
+ static 	int	newreno_cb_init(struct cc_var *ccv, void *);
  static size_t	newreno_data_sz(void);
  
  
@@ -111,7 +109,6 @@
 //# define V_use_searchs VNET(use_searchs)
 //SYSCTL_VNET_INT(_net_inet_tcp_cc_newreno, OID_AUTO, use_searchs, CTLFLAG_RW, &VNET_NAME(use_searchs), 1, "Enable SEARCH algorithm in NewReno");
 
-/* SEARCH */
  struct cc_algo newreno_search_cc_algo = {
 	 .name = "newreno_search",
 	 .cb_destroy = newreno_cb_destroy,
@@ -229,8 +226,6 @@
 	 nreno->css_last_fas = 0;
 	 /* SEARCH */
 	 search_reset(nreno, UNSET_BIN_DURATION_FALSE);
-	 // if (V_use_search)
-  //   		nreno->newreno_flags &= ~(CC_NEWRENO_HYSTART_ENABLED | CC_NEWRENO_HYSTART_IN_CSS);
 	 return (0);
  }
  
@@ -323,7 +318,7 @@
  
 	 initial_rtt = nreno->search_bin_duration_us * SEARCH_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
-	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu] Update bins [passed_bins %d] [initial_rtt %lu]\n", ccv, now_us, passed_bins, initial_rtt);
+	 //log(LOG_INFO, "[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu] Update bins [passed_bins %d] [initial_rtt %lu]\n", ccv, now_us, passed_bins, initial_rtt);
  
 	 /* Need reset due to missed bins*/
 	 if (passed_bins > search_alpha * (initial_rtt / nreno->search_bin_duration_us)) {
@@ -435,7 +430,8 @@
 	 }
  
 	 CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
- 
+         search_reset(nreno, UNSET_BIN_DURATION_FALSE);
+
 	 log(LOG_INFO,  "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", 
 			 ccv, 
 			 now_us, 
@@ -456,10 +452,10 @@
 	int64_t prev_delv_bytes = 0;	
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
-	//uint64_t delta_bytes = 0;
-	//uint64_t mb_per_sec = 0;
-	//uint64_t delta_bytes_one_bin = 0;
-	//uint64_t mb_per_sec_one_bin = 0;
+	uint64_t delta_bytes = 0;
+	uint64_t mb_per_sec = 0;
+	uint64_t delta_bytes_one_bin = 0;
+	uint64_t mb_per_sec_one_bin = 0;
 
 
 	nreno->search_bytes_this_bin += ccv->bytes_this_ack;
@@ -501,7 +497,7 @@
 
 			/* check for exit condition */
 			if ((2 * prev_delv_bytes) >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
-				/*delta_bytes = curr_delv_bytes - prev_delv_bytes;
+				delta_bytes = curr_delv_bytes - prev_delv_bytes;
 				if (curr_delv_bytes < prev_delv_bytes)
 				    delta_bytes = 0;  // prevent negative bitrate due to jitter
 						      
@@ -513,13 +509,13 @@
 
 				mb_per_sec_one_bin = (delta_bytes_one_bin / rtt_us) * 8; //Mb/s
 
-				log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_EXIT_RATE: [now %lu] [delta_bytes %lu] [rtt_us %lu] [rate %lu MB/s] [delta_bytes_one_bin %lu] [mb_per_sec_one_bin %lu]\n" ,ccv, now_us, delta_bytes, rtt_us, mb_per_sec, delta_bytes_one_bin, mb_per_sec_one_bin);*/
+				log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_EXIT_RATE: [now %lu] [delta_bytes %lu] [rtt_us %lu] [rate %lu MB/s] [delta_bytes_one_bin %lu] [mb_per_sec_one_bin %lu]\n" ,ccv, now_us, delta_bytes, rtt_us, mb_per_sec, delta_bytes_one_bin, mb_per_sec_one_bin);
 				
 				search_exit_slow_start(ccv, now_us, rtt_us);
 			}
 		}
 
-		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
+		/*log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
 			ccv, 
 			now_us, 
 			nreno->search_bin_duration_us, 
@@ -528,7 +524,7 @@
 			prev_delv_bytes,
 			norm_diff,
 			nreno->search_scale_factor,
-			nreno->search_curr_idx);
+			nreno->search_curr_idx);*/
 	}
  
  }
@@ -536,7 +532,9 @@
  static void newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 
 	 struct newreno *nreno;
- 
+ 	//For logging
+	 //struct tcpcb *tp= ccv->ccvc.tcp;
+
 	 nreno = ccv->cc_data;
  
 	 if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
@@ -657,15 +655,15 @@
 					 incr = min(ccv->bytes_this_ack, CCV(ccv, t_maxseg));
  
 				 /* Only if Hystart is enabled will the flag get set */
-				 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
+				// if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
 					 // incr /= hystart_css_growth_div;
-					 newreno_log_hystart_event(ccv, nreno, 3, incr);
-				 }
+				//	 newreno_log_hystart_event(ccv, nreno, 3, incr);
+				 //}
 			 }
 
 			 if (V_use_search){
 				 /* implement search algorithm */
-				 search_update(ccv);
+				  search_update(ccv);
 				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 			 }
 		 }
@@ -675,7 +673,7 @@
 				 TCP_MAXWIN << CCV(ccv, snd_scale));
 	 }
 
-	 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u]\n", 
+	 /*log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [tp_send_nxt %u] tp_initial_seq_sent %u]\n", 
 		 ccv, 
 		 get_now_us(), 
 		 get_rtt_us(ccv),
@@ -683,8 +681,10 @@
 		 ccv->curack,
 		 CCV(ccv, snd_cwnd),
 		 CCV(ccv, snd_ssthresh),
-		 CCV(ccv, t_maxseg)
-	 );
+		 CCV(ccv, t_maxseg),
+		 CCV(ccv, snd_nxt),
+		 tp->iss
+	 );*/
  }
  
  static void

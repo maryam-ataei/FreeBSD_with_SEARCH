@@ -37,21 +37,19 @@
  #define V_use_search 1
 //  VNET_DECLARE(uint8_t, use_search);
 //  #define V_use_search VNET(use_search)
-
-// need to add comment
- #define V_cwnd_rollback 0
+ 
+ #define V_CWND_ROLLBACK 0
  
  #define SEARCH_WINDOW_SIZE_FACTOR 35
  #define SEARCH_BINS 10
  #define SEARCH_EXTRA_BINS 15
  #define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
  #define SEARCH_THRESH 35
-# do: make capital
- #define search_alpha 200
+ #define SEARCH_ALPHA MAX_US_INT
  
- enum unset_bin_duration { //do: reset_bin_duration
-	 UNSET_BIN_DURATION_FALSE,  // Reset bin duration   //do: RESET_BIN_DURATION_TRUE,
-	 UNSET_BIN_DURATION_TRUE    // Do not reset bin duration //do: RESET_BIN_DURATION_FALSE
+ enum unset_bin_duration {
+	 RESET_BIN_DURATION_TRUE,		// Reset bin duration
+	 RESET_BIN_DURATION_FALSE		// Do not reset bin duration
  };
  
  
@@ -71,13 +69,12 @@
 	 uint32_t css_last_fas;
  
 	 /* SEARCH */
-	 uint32_t search_bin_duration_us;    /* duration of each bin in microsecond */
-	 int32_t  search_curr_idx;          /* total number of bins */
-	 uint64_t search_bin_end_us;        /* end time of the latest bin in microseconds */
+	 uint32_t search_bin_duration_us;				/* duration of each bin in microsecond */
+	 int32_t  search_curr_idx;						/* total number of bins */
+	 uint64_t search_bin_end_us;					/* end time of the latest bin in microsecond */
 	 search_bin_t search_bin[SEARCH_TOTAL_BINS];	/* array to keep bytes for bins */
-	 uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
+	 uint8_t search_scale_factor;					/* scale factor to fit the value with bin size */
 	 uint32_t search_bytes_this_bin;				/* bytes_acked during this bin*/
- 	 uint32_t search_reset_flag;
  };
  
  /* SEARCH */
@@ -92,7 +89,7 @@
  #define CC_NEWRENO_BETA_ECN		2	/* ECN Beta for Abe */
  
  /* Flags values */
- #define CC_NEWRENO_HYSTART_ENABLED	0x0002	/* We can do hystart, a loss removes this flag */
- #define CC_NEWRENO_HYSTART_IN_CSS	0x0004	/* If we enter hystart CSS this flag is set */
- #define CC_NEWRENO_BETA_ECN_ENABLED	0x0020
+ #define CC_NEWRENO_HYSTART_ENABLED		0x0002	/* We can do hystart, a loss removes this flag */
+ #define CC_NEWRENO_HYSTART_IN_CSS		0x0004	/* If we enter hystart CSS this flag is set */
+ #define CC_NEWRENO_BETA_ECN_ENABLED 	0x0020
  #endif /* _CC_NEWRENO_H */
