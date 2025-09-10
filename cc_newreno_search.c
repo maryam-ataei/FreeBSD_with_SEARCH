@@ -1,4 +1,9 @@
 // do not reset cumulative acked values
+// do SEARCH or HyStart flag
+// reset after exit
+// set incr to 0 after exiting with slow start
+// add comment for all functions, above each function
+
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
@@ -138,6 +143,7 @@
 	 nreno->search_bin_end_us = 0;
 	 nreno->search_scale_factor = 0;
 	 nreno->search_bytes_this_bin = 0;
+
 	 if (flag == RESET_BIN_DURATION_TRUE)
 		 nreno->search_bin_duration_us = 0;
  }
@@ -305,7 +311,7 @@
 	 }
 
 	 nreno->search_bin[0] = (search_bin_t)bin_value;
-	 nreno->search_bytes_this_bin = 0;
+	 // nreno->search_bytes_this_bin = 0;   //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
 
  }
 
@@ -336,18 +342,22 @@
 	 /* Need reset due to missed bins*/
 	 if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
 
-		 /* Update bin_value before reset to fill the first bin after reset by whole acked bytes until this time*/
-		 if (nreno->search_curr_idx == 0) 
-			 bin_value_before_reset = nreno->search_bytes_this_bin + SEARCH_BIN(ccv, 0);
-		 else
-			 bin_value_before_reset = nreno->search_bytes_this_bin +SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
+	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
+		 // /* Update bin_value before reset to fill the first bin after reset by whole acked bytes until this time*/
+		 // if (nreno->search_curr_idx == 0) 
+		// 	 bin_value_before_reset = nreno->search_bytes_this_bin + SEARCH_BIN(ccv, 0);
+		 // else
+		// 	 bin_value_before_reset = nreno->search_bytes_this_bin +SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
+
+		bin_value_before_reset = nreno->search_bytes_this_bin;
+	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
 
 		 if (passed_bins > SEARCH_BINS) 
 			 search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		 else 
 			 search_reset(nreno, RESET_BIN_DURATION_FALSE);
 
-		 nreno->search_bytes_this_bin = bin_value_before_reset;
+		 nreno->search_bytes_this_bin = bin_value_before_reset; 
 		 search_init_bins(ccv, now_us, rtt_us);
 		 return;
 	 }
@@ -372,7 +382,7 @@
 
 	 // Assign bin value to current bin
 	 SEARCH_BIN(ccv, nreno->search_curr_idx) = (search_bin_t)bin_value;
-	 nreno->search_bytes_this_bin = 0;
+	 // nreno->search_bytes_this_bin = 0; //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
  }
 
  /* Calculate delivered bytes for a window considering interpolation */
@@ -455,7 +465,47 @@
 	 #endif
  }
 
- static void search_update(struct cc_var* ccv) {
+ static void search_log_exit_rate(struct cc_var *ccv,
+                     struct newreno *nreno,
+                     int64_t curr_delv_bytes,
+                     int64_t prev_delv_bytes,
+                     int32_t prev_idx,
+                     uint64_t now_us,
+                     uint64_t rtt_us)
+{
+    uint64_t delta_rate_window = 0;
+    uint64_t b_per_sec_window = 0;
+    uint64_t delta_bytes_one_bin = 0;
+    uint64_t b_per_sec_one_bin = 0;
+
+    /* prevent negative delta due to jitter */
+    if (curr_delv_bytes > prev_delv_bytes)
+        delta_rate_window = curr_delv_bytes - prev_delv_bytes;
+
+    b_per_sec_window = delta_rate_window * 8;  /* b/s */
+
+    if (SEARCH_BIN(ccv, nreno->search_curr_idx) > SEARCH_BIN(ccv, prev_idx))
+        delta_bytes_one_bin = SEARCH_BIN(ccv, nreno->search_curr_idx) - SEARCH_BIN(ccv, prev_idx);
+
+    b_per_sec_one_bin = (delta_bytes_one_bin * 8 * 1000000) / rtt_us;  /* b/s */
+
+#ifdef SEARCH_LOG_ENABLED
+    log(LOG_INFO,
+        "[CCRG]: [flow_pointer: %p] SEARCH_EXIT_RATE: "
+        "[now %lu] [delta_rate_wnd %lu] [rtt_us %lu] [rate_wnd %lu b/s] "
+        "[delta_bytes_one_bin %lu] [rate_one_bin %lu b/s]\n",
+        ccv,
+        now_us,
+        delta_rate_window,
+        rtt_us,
+        b_per_sec_window,
+        delta_bytes_one_bin,
+        b_per_sec_one_bin);
+#endif
+}
+
+
+ static bool search_update(struct cc_var* ccv) {
 
 	struct newreno* nreno = ccv->cc_data;
 
@@ -467,13 +517,8 @@
 	int64_t prev_delv_bytes = 0;	
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
-	//uint64_t delta_bytes = 0;
-	//uint64_t mb_per_sec = 0;
-	//uint64_t delta_bytes_one_bin = 0;
-	//uint64_t mb_per_sec_one_bin = 0;
 
-
-	nreno->search_bytes_this_bin += ccv->bytes_this_ack;
+	nreno->search_bytes_curr_bin += ccv->bytes_this_ack; //!!!change name and add description for this
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
 	if (nreno->search_curr_idx < 0) {
@@ -482,12 +527,12 @@
 			//log(LOG_INFO, "SEARCH_INFO: Inite bin\n");
 		// #endif
 		search_init_bins(ccv, now_us, rtt_us);
-		return;
+		return false;
 	}
 
 	// Wait until reaching the bin boundary,
 	if (now_us < nreno->search_bin_end_us) {
-		return;
+		return false;
 	}
 
 	search_update_bins(ccv, now_us, rtt_us);
@@ -515,23 +560,27 @@
 
 			/* check for exit condition */
 			if ((2 * prev_delv_bytes) >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
-				/*delta_bytes = curr_delv_bytes - prev_delv_bytes;
-				if (curr_delv_bytes < prev_delv_bytes)
-				    delta_bytes = 0;  // prevent negative bitrate due to jitter
-						      
-				mb_per_sec = (delta_bytes / rtt_us) * 8; //Mb/s
+				search_log_exit_rate(ccv, nreno,
+                     curr_delv_bytes,
+                     prev_delv_bytes,
+                     prev_idx,
+                     now_us,
+                     rtt_us);
 
-				delta_bytes_one_bin = SEARCH_BIN(ccv, nreno->search_curr_idx) - SEARCH_BIN(ccv, prev_idx);
-				if (SEARCH_BIN(ccv, nreno->search_curr_idx) < SEARCH_BIN(ccv, prev_idx))
-					delta_bytes_one_bin = 0;
-
-				mb_per_sec_one_bin = (delta_bytes_one_bin / rtt_us) * 8; //Mb/s
-
-				#ifdef SEARCH_LOG_ENABLED
-					log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_EXIT_RATE: [now %lu] [delta_bytes %lu] [rtt_us %lu] [rate %lu MB/s] [delta_bytes_one_bin %lu] [mb_per_sec_one_bin %lu]\n" ,ccv, now_us, delta_bytes, rtt_us, mb_per_sec, delta_bytes_one_bin, mb_per_sec_one_bin);
-				#endif
-				*/
 				search_exit_slow_start(ccv, now_us, rtt_us);
+				#ifdef SEARCH_LOG_ENABLED
+					log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
+						ccv, 
+						now_us, 
+						nreno->search_bin_duration_us, 
+						nreno->search_bin_end_us, 
+						curr_delv_bytes,
+						prev_delv_bytes,
+						norm_diff,
+						nreno->search_scale_factor,
+						nreno->search_curr_idx);
+				#endif
+				return true;
 			}
 		}
 
@@ -548,19 +597,7 @@
 				nreno->search_curr_idx);
 		#endif
 	}
-	/*#ifdef SEARCH_LOG_ENABLED
-		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
-			ccv,
-			now_us,
-			nreno->search_bin_duration_us,
-			nreno->search_bin_end_us,
-			curr_delv_bytes,		
-			prev_delv_bytes,
-			norm_diff,
-			nreno->search_scale_factor,
-			nreno->search_curr_idx);
-	#endif*/
-
+	return false;
  }
 /* SEARCH_end */
 
@@ -645,43 +682,45 @@
 				 else
 					 abc_val = V_tcp_abc_l_var;
 				/* SEARCH_begin */
-				 // if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
-					//  (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
-					//  ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
-					//  /*
-					//   * Hystart is allowed and still enabled and we are not yet
-					//   * in CSS. Lets check to see if we can make a decision on
-					//   * if we need to go into CSS.
-					//   */
-					//  if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
-					// 	 (nreno->css_current_round_minrtt != 0xffffffff) &&
-					// 	 (nreno->css_lastround_minrtt != 0xffffffff)) {
-					// 	 uint32_t rtt_thresh;
+					if (V_use_hystartpp) {
+					 if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
+						 (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
+						 ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
+						 /*
+						  * Hystart is allowed and still enabled and we are not yet
+						  * in CSS. Lets check to see if we can make a decision on
+						  * if we need to go into CSS.
+						  */
+						 if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
+							 (nreno->css_current_round_minrtt != 0xffffffff) &&
+							 (nreno->css_lastround_minrtt != 0xffffffff)) {
+							 uint32_t rtt_thresh;
 
-					// 	 /* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
-					// 	 rtt_thresh = (nreno->css_lastround_minrtt >> 3);
-					// 	 if (rtt_thresh < hystart_minrtt_thresh)
-					// 		 rtt_thresh = hystart_minrtt_thresh;
-					// 	 if (rtt_thresh > hystart_maxrtt_thresh)
-					// 		 rtt_thresh = hystart_maxrtt_thresh;
-					// 	 newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
-					// 	 if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
-					// 		 /* Enter CSS */
-					// 		 nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
-					// 		 nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
-					// 		 /*
-					// 		  * The draft (v4) calls for us to set baseline to css_current_round_min
-					// 		  * but that can cause an oscillation. We probably shoudl be using
-					// 		  * css_lastround_minrtt, but the authors insist that will cause
-					// 		  * issues on exiting early. We will leave the draft version for now
-					// 		  * but I suspect this is incorrect.
-					// 		  */
-					// 		 nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
-					// 		 nreno->css_entered_at_round = nreno->css_current_round;
-					// 		 newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
-					// 	 }
-					//  }
-				 // }
+							 /* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
+							 rtt_thresh = (nreno->css_lastround_minrtt >> 3);
+							 if (rtt_thresh < hystart_minrtt_thresh)
+								 rtt_thresh = hystart_minrtt_thresh;
+							 if (rtt_thresh > hystart_maxrtt_thresh)
+								 rtt_thresh = hystart_maxrtt_thresh;
+							 newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
+							 if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
+								 /* Enter CSS */
+								 nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
+								 nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
+								 /*
+								  * The draft (v4) calls for us to set baseline to css_current_round_min
+								  * but that can cause an oscillation. We probably shoudl be using
+								  * css_lastround_minrtt, but the authors insist that will cause
+								  * issues on exiting early. We will leave the draft version for now
+								  * but I suspect this is incorrect.
+								  */
+								 nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
+								 nreno->css_entered_at_round = nreno->css_current_round;
+								 newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
+							 }
+						 }
+					 }
+					}
 				/* SEARCH_end */
 				 if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
 					 incr = min(ccv->bytes_this_ack,
@@ -693,18 +732,21 @@
 				 /* Only if Hystart is enabled will the flag get set */
 				 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
 				 	/* SEARCH_begin */
-					 // incr /= hystart_css_growth_div;
+				 	if (V_use_hystartpp)
+						incr /= hystart_css_growth_div;
 				 	/* SEARCH_end */
 					 newreno_log_hystart_event(ccv, nreno, 3, incr);
 				 }
 			 }
 			 /* SEARCH_begin */
 			 if (V_use_search){
-				 /* implement search algorithm */
-				 search_update(ccv);
+				/* implement search algorithm */
+				if (search_update(ccv)) { // returns true if exit triggered
+        			incr = 0;
+    			}
 				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
-			/* SEARCH_end */
 			 }
+			 /* SEARCH_end */
 		 }
 		 /* ABC is on by default, so incr equals 0 frequently. */
 		 if (incr > 0)
@@ -713,7 +755,7 @@
 	 }
 
 	 #ifdef SEARCH_LOG_ENABLED
-		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u]\n", 
+		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] \n", 
 			 ccv, 
 			 get_now_us(), 
 			 get_rtt_us(ccv),
@@ -721,7 +763,8 @@
 			 ccv->curack,
 			 CCV(ccv, snd_cwnd),
 			 CCV(ccv, snd_ssthresh),
-			 CCV(ccv, t_maxseg)
+			 CCV(ccv, t_maxseg),
+			 nreno->search_bytes_curr_bin
 		 );
 	 #endif
 	 /* SEARCH_end */
@@ -944,15 +987,19 @@
 			  * and give us hystart_css_rounds more rounds.
 			  */
 			 if (ccv->flags & CCF_HYSTART_CONS_SSTH) {
-			 	/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting
-				 //CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
+			 	/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
+			 	if (V_use_hystartpp)
+					CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
 			 } else {
-				// CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
+			 	if (V_use_hystartpp)
+					CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
 			 }
-			 //CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
+			 if (V_use_hystartpp)
+			 	CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
 			 nreno->css_entered_at_round = round_cnt;
 		 } else {
-			 //CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
+		 	if (V_use_hystartpp)
+				CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 		 	/* SEARCH_end */
 
 			 /* Turn off the CSS flag */
