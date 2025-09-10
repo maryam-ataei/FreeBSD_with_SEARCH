@@ -142,7 +142,7 @@
 	 nreno->search_curr_idx = -1;
 	 nreno->search_bin_end_us = 0;
 	 nreno->search_scale_factor = 0;
-	 nreno->search_bytes_this_bin = 0;
+	 nreno->search_bytes_curr_bin = 0;
 
 	 if (flag == RESET_BIN_DURATION_TRUE)
 		 nreno->search_bin_duration_us = 0;
@@ -304,14 +304,14 @@
 	 nreno->search_bin_end_us = now_us + nreno->search_bin_duration_us;
 	 nreno->search_curr_idx = 0;
 
-	 bin_value = nreno->search_bytes_this_bin;
+	 bin_value = nreno->search_bytes_curr_bin;
 	 if (bin_value > MAX_US_INT) {
 		 amount_scaled = search_bit_shifting(ccv, bin_value);
 		 bin_value >>= amount_scaled;
 	 }
 
 	 nreno->search_bin[0] = (search_bin_t)bin_value;
-	 // nreno->search_bytes_this_bin = 0;   //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
+	 // nreno->search_bytes_curr_bin = 0;   //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 
  }
 
@@ -342,22 +342,22 @@
 	 /* Need reset due to missed bins*/
 	 if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
 
-	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
+	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 		 // /* Update bin_value before reset to fill the first bin after reset by whole acked bytes until this time*/
 		 // if (nreno->search_curr_idx == 0) 
-		// 	 bin_value_before_reset = nreno->search_bytes_this_bin + SEARCH_BIN(ccv, 0);
+		// 	 bin_value_before_reset = nreno->search_bytes_curr_bin + SEARCH_BIN(ccv, 0);
 		 // else
-		// 	 bin_value_before_reset = nreno->search_bytes_this_bin +SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
+		// 	 bin_value_before_reset = nreno->search_bytes_curr_bin +SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
 
-		bin_value_before_reset = nreno->search_bytes_this_bin;
-	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
+		bin_value_before_reset = nreno->search_bytes_curr_bin;
+	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 
 		 if (passed_bins > SEARCH_BINS) 
 			 search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		 else 
 			 search_reset(nreno, RESET_BIN_DURATION_FALSE);
 
-		 nreno->search_bytes_this_bin = bin_value_before_reset; 
+		 nreno->search_bytes_curr_bin = bin_value_before_reset; 
 		 search_init_bins(ccv, now_us, rtt_us);
 		 return;
 	 }
@@ -369,7 +369,7 @@
 	 nreno->search_bin_end_us += passed_bins * nreno->search_bin_duration_us;
 
 	 /* Calculate bin_value by dividing bytes_acked by 2^scale_factor */
-	 bin_value = (nreno->search_bytes_this_bin >> nreno->search_scale_factor);
+	 bin_value = (nreno->search_bytes_curr_bin >> nreno->search_scale_factor);
 
 	 if (nreno->search_curr_idx > 0) 
 		 bin_value += SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
@@ -382,7 +382,7 @@
 
 	 // Assign bin value to current bin
 	 SEARCH_BIN(ccv, nreno->search_curr_idx) = (search_bin_t)bin_value;
-	 // nreno->search_bytes_this_bin = 0; //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_this_bin
+	 // nreno->search_bytes_curr_bin = 0; //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
  }
 
  /* Calculate delivered bytes for a window considering interpolation */
@@ -518,7 +518,8 @@
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 
-	nreno->search_bytes_curr_bin += ccv->bytes_this_ack; //!!!change name and add description for this
+	//add description...
+	nreno->search_bytes_curr_bin += ccv->bytes_this_ack; 
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
 	if (nreno->search_curr_idx < 0) {

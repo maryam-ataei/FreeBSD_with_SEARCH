@@ -73,7 +73,7 @@
 	 uint64_t search_bin_end_us;					/* end time of the latest bin in microsecond */
 	 search_bin_t search_bin[SEARCH_TOTAL_BINS];	/* array to keep bytes for bins */
 	 uint8_t search_scale_factor;					/* scale factor to fit the value with bin size */
-	 uint32_t search_bytes_this_bin;				/* bytes_acked during this bin*/
+	 uint32_t search_bytes_curr_bin;				/* bytes_acked during this bin*/
  };
  
  #define SEARCH_BIN(ccv, index) ((struct newreno*)(ccv)->cc_data)->search_bin[(index) % SEARCH_TOTAL_BINS]
