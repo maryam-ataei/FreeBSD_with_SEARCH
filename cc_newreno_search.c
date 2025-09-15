@@ -767,7 +767,7 @@
 	 }
 
 	 #ifdef SEARCH_LOG_ENABLED
-		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] [incr %u] \n", 
+		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
 			 ccv, 
 			 get_now_us(), 
 			 get_rtt_us(ccv),
@@ -777,7 +777,6 @@
 			 CCV(ccv, snd_ssthresh),
 			 CCV(ccv, t_maxseg),
 			 nreno->search_bytes_curr_bin,
-			 incr
 		 );
 	 #endif
 	 /* SEARCH_end */
