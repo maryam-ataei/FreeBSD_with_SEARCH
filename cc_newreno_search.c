@@ -93,7 +93,7 @@
  #include <sys/syslog.h>
  #include <netinet/khelp/h_ertt.h>
  #include <sys/time.h>
- #include <netinet/tcp_time.h>
+ #include <netinet/tcp_hpts.h>
 
  #define SEARCH_LOG_ENABLED
 
@@ -264,8 +264,9 @@
 
  static inline uint64_t
  get_now_us(void)
- {
-     return tcp_get_usecs();
+ {	
+ 	 struct timeval tv;
+     return tcp_get_usecs(&tv);
  }
 
 
