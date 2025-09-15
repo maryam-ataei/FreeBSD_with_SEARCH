@@ -773,6 +773,18 @@
 		 if (incr > 0)
 			 CCV(ccv, snd_cwnd) = min(cw + incr,
 				 TCP_MAXWIN << CCV(ccv, snd_scale));
+
+		 /* SEARCH_begin */
+		 #ifdef SEARCH_LOG_ENABLED
+ 		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] [incr %u] [cw %u] [cwnd %u]\n", 
+	 		ccv, 
+	 		get_now_us(), 
+	 		incr,
+	 		cw,
+	 		CCV(ccv, snd_cwnd));
+			 #endif
+			 /* SEARCH_end */
+
 	 }
 
 	 #ifdef SEARCH_LOG_ENABLED
