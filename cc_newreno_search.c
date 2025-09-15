@@ -660,12 +660,7 @@
 			 } else
 				 incr = max((incr * incr / cw), 1);
 	
-		 } else {
-
-			 if (V_tcp_do_rfc3465) {
-			 	// #ifdef SEARCH_LOG_ENABLED
-					// log(LOG_INFO, "HyStart++ updates in slow start\n");
-			 	// #endif
+		 } else if (V_tcp_do_rfc3465) {
 				 /*
 				  * In slow-start with ABC enabled and no RTO in sight?
 				  * (Must not use abc_l_var > 1 if slow starting after
@@ -682,8 +677,9 @@
 					 abc_val = ccv->labc;
 				 else
 					 abc_val = V_tcp_abc_l_var;
-				/* SEARCH_begin */
-					if (V_use_hystartpp) {
+
+				 /* SEARCH_begin */
+				 if (V_use_hystartpp) {
 					 if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
 						 (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 						 ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
@@ -721,14 +717,29 @@
 							 }
 						 }
 					 }
-					}
-				/* SEARCH_end */
+				 }
+				 /* SEARCH_end */
+
 				 if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
 					 incr = min(ccv->bytes_this_ack,
 						 ccv->nsegs * abc_val *
 						 CCV(ccv, t_maxseg));
 				 else
 					 incr = min(ccv->bytes_this_ack, CCV(ccv, t_maxseg));
+
+				 /* SEARCH_begin */
+				 #ifdef SEARCH_LOG_ENABLED
+		 		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] [incr %u] [snd_nxt %u] [snd_max %u] [nseq %u] [abs_val %u]\n", 
+			 		ccv, 
+			 		get_now_us(), 
+			 		incr,
+			 		CCV(ccv, snd_nxt),
+			 		CCV(ccv, snd_max),
+			 		ccv->nsegs, 
+			 		abc_val
+		 		 );
+	 			 #endif
+	 			 /* SEARCH_end */
 
 				 /* Only if Hystart is enabled will the flag get set */
 				 if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
@@ -738,16 +749,16 @@
 				 	/* SEARCH_end */
 					 newreno_log_hystart_event(ccv, nreno, 3, incr);
 				 }
-			 }
-			 /* SEARCH_begin */
-			 if (V_use_search){
-				/* implement search algorithm */
-				if (search_update(ccv)) { // returns true if exit triggered
-        			incr = 0;
-    			}
-				 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
-			 }
-			 /* SEARCH_end */
+
+			 	 /* SEARCH_begin */
+			 	 if (V_use_search){
+					 /* implement search algorithm */
+					 if (search_update(ccv)) { // returns true if exit triggered
+        				 incr = 0;
+    				 }
+				 	 //nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
+			 	 }
+			 	 /* SEARCH_end */
 		 }
 		 /* ABC is on by default, so incr equals 0 frequently. */
 		 if (incr > 0)
@@ -756,7 +767,7 @@
 	 }
 
 	 #ifdef SEARCH_LOG_ENABLED
-		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] \n", 
+		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] [incr %u] \n", 
 			 ccv, 
 			 get_now_us(), 
 			 get_rtt_us(ccv),
@@ -765,7 +776,8 @@
 			 CCV(ccv, snd_cwnd),
 			 CCV(ccv, snd_ssthresh),
 			 CCV(ccv, t_maxseg),
-			 nreno->search_bytes_curr_bin
+			 nreno->search_bytes_curr_bin,
+			 incr
 		 );
 	 #endif
 	 /* SEARCH_end */
