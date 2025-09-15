@@ -776,7 +776,7 @@
 			 CCV(ccv, snd_cwnd),
 			 CCV(ccv, snd_ssthresh),
 			 CCV(ccv, t_maxseg),
-			 nreno->search_bytes_curr_bin,
+			 nreno->search_bytes_curr_bin
 		 );
 	 #endif
 	 /* SEARCH_end */
