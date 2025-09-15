@@ -93,6 +93,7 @@
  #include <sys/syslog.h>
  #include <netinet/khelp/h_ertt.h>
  #include <sys/time.h>
+ #include <netinet/tcp_time.h>
 
  #define SEARCH_LOG_ENABLED
 
@@ -254,11 +255,19 @@
  }
 
  /* SEARCH_begin */
- static uint64_t get_now_us(void) {
-	 struct timeval tv;
-	 getmicrouptime(&tv);  // Uptime since boot
-	 return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
+ // static uint64_t get_now_us(void) {
+// 	 struct timeval tv;
+// 	 getmicrouptime(&tv);  // Uptime since boot
+// 	 return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
+ // }
+
+
+ static inline uint64_t
+ get_now_us(void)
+ {
+     return tcp_get_usecs();
  }
+
 
  static uint64_t get_rtt_us(struct cc_var* ccv) {
 	 uint64_t srtt = CCV(ccv, t_srtt);
