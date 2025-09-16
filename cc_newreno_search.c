@@ -304,7 +304,9 @@
      if (ertt_id > 0) {
          struct ertt *e_t = (struct ertt *)khelp_get_osd(&tp->t_osd, ertt_id);
          if (e_t != NULL && e_t->rtt > 0)
-             return e_t->rtt;  // already in microseconds
+             /* e_t->rtt is in ticks → convert to microseconds */
+            return (uint64_t)e_t->rtt * (uint64_t)tick;
+
      }
 
      /* Fallback: smoothed RTT */
