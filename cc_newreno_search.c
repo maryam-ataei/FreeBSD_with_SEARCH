@@ -108,6 +108,9 @@
  static void	newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32_t fas);
  static int		newreno_cb_init(struct cc_var *ccv, void *);
  static size_t	newreno_data_sz(void);
+ /* SEARCH_begin */
+ static int ertt_id = -1;
+ /* SEARCH_end */
 
 
  VNET_DECLARE(uint32_t, newreno_beta);
@@ -244,6 +247,15 @@
   		//nreno->newreno_flags &= ~(CC_NEWRENO_HYSTART_ENABLED | CC_NEWRENO_HYSTART_IN_CSS);
 	 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 	 }
+
+	 if (ertt_id <= 0) {
+     	ertt_id = khelp_get_id("ertt");
+     	if (ertt_id <= 0) {
+        	printf("%s: h_ertt module not found, falling back to srtt\n", __func__);
+        	ertt_id = -1;  // mark unavailable
+    	}
+	}
+
 	 /* SEARCH_end */
 	 return (0);
  }
@@ -260,25 +272,51 @@
 // 	 getmicrouptime(&tv);  // Uptime since boot
 // 	 return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
  // }
-
-
  static inline uint64_t
  get_now_us(void)
- {	
- 	 struct timeval tv;
-     return tcp_get_usecs(&tv);
+ {
+     struct timeval tv;
+     tcp_get_usecs(&tv);
+     /* 
+     * NOTE: Be careful with overflow here!
+     * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
+     * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
+     * jumping from ~4,294,966,xxx back to a small number.
+     * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
+     */
+     return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
  }
 
 
- static uint64_t get_rtt_us(struct cc_var* ccv) {
+ static uint64_t 
+ get_srtt_us(struct cc_var* ccv) {
 	 uint64_t srtt = CCV(ccv, t_srtt);
 	 return (((uint64_t)srtt) * tick) >> TCP_RTT_SHIFT;  // convert to microseconds
  }
 
+ static uint64_t
+ get_ertt_us(struct cc_var *ccv)
+ {
+     struct tcpcb *tp = ccv->ccvc.tcp;
+
+     /* If ERTT is available, use it */
+     if (ertt_id > 0) {
+         struct ertt *e_t = (struct ertt *)khelp_get_osd(&tp->t_osd, ertt_id);
+         if (e_t != NULL && e_t->rtt > 0)
+             return e_t->rtt;  // already in microseconds
+     }
+
+     /* Fallback: smoothed RTT */
+     uint64_t srtt = CCV(ccv, t_srtt);
+     return ((srtt * tick) >> TCP_RTT_SHIFT);
+ }
+
+
  /* Scale bin value to fit bin size, rescale previous bins.
   * Return amount scaled.
   */
- static uint8_t search_bit_shifting(struct cc_var* ccv, uint64_t bin_value) {
+ static uint8_t 
+ search_bit_shifting(struct cc_var* ccv, uint64_t bin_value) {
 
 	 struct newreno* nreno = ccv->cc_data;
 	 uint8_t num_shift = 0;	
@@ -302,7 +340,8 @@
  }
 
  /* Initialize bin */
- static void search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
+ static void 
+ search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	 struct newreno* nreno = ccv->cc_data;
 
@@ -325,7 +364,8 @@
 
  }
 
- static void search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
+ static void 
+ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	 struct newreno* nreno = ccv->cc_data;
 
@@ -396,7 +436,8 @@
  }
 
  /* Calculate delivered bytes for a window considering interpolation */
- static uint64_t search_compute_delivered_window(struct cc_var* ccv, int32_t left, int32_t right, uint32_t fraction) {
+ static uint64_t 
+ search_compute_delivered_window(struct cc_var* ccv, int32_t left, int32_t right, uint32_t fraction) {
 
 	 uint64_t delivered = 0; 
 
@@ -414,7 +455,8 @@
  }
 
  /* Handle slow start exit condition */
- static void search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
+ static void 
+ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	 struct newreno* nreno = ccv->cc_data;
 
 	 int32_t cong_idx = 0;
@@ -475,7 +517,8 @@
 	 #endif
  }
 
- static void search_log_exit_rate(struct cc_var *ccv,
+ static void 
+ search_log_exit_rate(struct cc_var *ccv,
                      struct newreno *nreno,
                      int64_t curr_delv_bytes,
                      int64_t prev_delv_bytes,
@@ -515,12 +558,13 @@
 }
 
 
- static bool search_update(struct cc_var* ccv) {
+ static bool 
+ search_update(struct cc_var* ccv) {
 
 	struct newreno* nreno = ccv->cc_data;
 
 	uint64_t now_us = get_now_us();
-	uint64_t rtt_us = get_rtt_us(ccv);
+	uint64_t rtt_us = get_ertt_us(ccv);
 
 	int32_t prev_idx = 0;
 	int64_t curr_delv_bytes = 0;	
@@ -612,7 +656,8 @@
  }
 /* SEARCH_end */
 
- static void newreno_ack_received(struct cc_var *ccv, uint16_t type) {
+ static void 
+ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 
 	 struct newreno *nreno;
 
@@ -788,10 +833,11 @@
 	 }
 
 	 #ifdef SEARCH_LOG_ENABLED
-		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
+		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [ertt %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
 			 ccv, 
 			 get_now_us(), 
-			 get_rtt_us(ccv),
+			 get_ertt_us(ccv),
+			 get_srtt_us(ccv),
 			 ccv->bytes_this_ack,
 			 ccv->curack,
 			 CCV(ccv, snd_cwnd),
@@ -1057,6 +1103,12 @@
 		  */
 		 return;
 	 }
+	 /* SEARCH_begin */
+ 	 #ifdef SEARCH_LOG_ENABLED
+		 log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: rtt_sample in newreno_rttsample function [now %lu] [usec_rtt %u] \n", ccv, get_now_us(), usec_rtt); 
+ 	 #endif
+	 /* SEARCH_end */	 
+
 	 nreno->css_rttsample_count++;
 	 nreno->css_last_fas = fas;
 	 if (nreno->css_current_round_minrtt > usec_rtt) {
