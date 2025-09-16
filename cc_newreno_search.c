@@ -389,7 +389,10 @@
 	 initial_rtt = nreno->search_bin_duration_us * SEARCH_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
 	 #ifdef SEARCH_LOG_ENABLED
-	 	log(LOG_INFO, "[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu] Update bins [passed_bins %d] [initial_rtt %lu]\n", ccv, now_us, passed_bins, initial_rtt);
+	 	log(LOG_INFO, 
+	 		"[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu]"
+	 		" Update bins [passed_bins %d] [initial_rtt %lu]\n", 
+	 		 ccv, now_us, passed_bins, initial_rtt);
 	 #endif
 
 	 /* Need reset due to missed bins*/
@@ -512,7 +515,9 @@
 	 search_reset(nreno, RESET_BIN_DURATION_TRUE);
 
 	 #ifdef SEARCH_LOG_ENABLED
-	 	log(LOG_INFO,  "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", 
+	 	log(LOG_INFO,  
+	 		"[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu]"
+	 		" [exit condition was met [cwnd %u] [ssthresh %u]\n", 
 			 ccv, 
 			 now_us, 
 			 CCV(ccv, snd_cwnd), 
@@ -627,7 +632,10 @@
 
 				search_exit_slow_start(ccv, now_us, rtt_us);
 				#ifdef SEARCH_LOG_ENABLED
-					log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
+					log(LOG_INFO, 
+						"[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] "
+						"[bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] "
+						"[scale_factor %d] [curr_idx %d]\n",
 						ccv, 
 						now_us, 
 						nreno->search_bin_duration_us, 
@@ -643,7 +651,10 @@
 		}
 
 		#ifdef SEARCH_LOG_ENABLED
-			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] [bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] [scale_factor %d] [curr_idx %d]\n",
+			log(LOG_INFO, 
+				"[CCRG]: [flow_pointer: %p] SEARCH_INFO: [now %lu] [bin_duration %d] "
+				"[bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] "
+				"[scale_factor %d] [curr_idx %d]\n",
 				ccv, 
 				now_us, 
 				nreno->search_bin_duration_us, 
@@ -738,6 +749,11 @@
 
 				 /* SEARCH_begin */
 				 if (V_use_hystartpp) {
+				 	 #ifdef SEARCH_LOG_ENABLED
+					 	log(LOG_INFO, 
+				 		"[CCRG]: [flow_pointer: %p] HyStartPP_INFO: "
+				 		"Update HyStartPP in slow start [now %lu]\n", ccv, get_now_us()); 
+		 			 #endif
 					 if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
 						 (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 						 ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
@@ -787,7 +803,9 @@
 
 				 /* SEARCH_begin */
 				 #ifdef SEARCH_LOG_ENABLED
-		 		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] [incr %u] [snd_nxt %u] [snd_max %u] [nseq %u] [abs_val %u]\n", 
+		 		 log(LOG_INFO, 
+		 		 	"[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] "
+		 		 	"[incr %u] [snd_nxt %u] [snd_max %u] [nseq %u] [abs_val %u]\n", 
 			 		ccv, 
 			 		get_now_us(), 
 			 		incr,
@@ -824,7 +842,9 @@
 
 		 /* SEARCH_begin */
 		 #ifdef SEARCH_LOG_ENABLED
- 		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] [incr %u] [cw %u] [cwnd %u]\n", 
+ 		 log(LOG_INFO, 
+ 		 	"[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] "
+ 		 	"[incr %u] [cw %u] [cwnd %u]\n", 
 	 		ccv, 
 	 		get_now_us(), 
 	 		incr,
@@ -836,7 +856,10 @@
 	 }
 
 	 #ifdef SEARCH_LOG_ENABLED
-		 log(LOG_INFO, "[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] [ertt %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] [cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
+		 log(LOG_INFO, 
+		 	"[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] "
+		 	"[ertt %lu] [srtt %lu] [cur_bytes_ack %u] [curack %u] "
+		 	"[cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
 			 ccv, 
 			 get_now_us(), 
 			 get_ertt_us(ccv),
@@ -868,7 +891,8 @@
 	 }
 	 /* SEARCH_begin */
 	 #ifdef SEARCH_LOG_ENABLED
-	 	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: After idle [now %lu]\n", ccv, get_now_us()); 
+	 	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+	 		"SEARCH_INFO: After idle [now %lu]\n", ccv, get_now_us()); 
 	 #endif
 
 	 search_reset(nreno, RESET_BIN_DURATION_TRUE);
@@ -915,7 +939,9 @@
 		 /* SEARCH_begin */
 		 if (V_use_search){
 		 	#ifdef SEARCH_LOG_ENABLED
-				log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: Loss happens at [now %lu]\n", ccv, get_now_us()); 
+				log(LOG_INFO, 
+				"[CCRG]: [flow_pointer: %p] SEARCH_INFO: "
+				"Loss happens at [now %lu]\n", ccv, get_now_us()); 
 			#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		 }
@@ -943,7 +969,9 @@
 		 /* SEARCH_begin */
 		 if (V_use_search){
 		 	#ifdef SEARCH_LOG_ENABLED
-				log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: ECN flag happens at [now %lu]\n", ccv, get_now_us()); 
+				log(LOG_INFO, 
+				"[CCRG]: [flow_pointer: %p] SEARCH_INFO: "
+				"ECN flag happens at [now %lu]\n", ccv, get_now_us()); 
 		 	#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		 }
@@ -965,7 +993,9 @@
 		 /* SEARCH_begin */
 		 if (V_use_search){
 		 	#ifdef SEARCH_LOG_ENABLED
-				log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: RTO happens at [now %lu]\n", ccv, get_now_us()); 
+				log(LOG_INFO, 
+				"[CCRG]: [flow_pointer: %p] SEARCH_INFO: "
+				"RTO happens at [now %lu]\n", ccv, get_now_us()); 
 		 	#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		 }
@@ -1108,7 +1138,10 @@
 	 }
 	 /* SEARCH_begin */
  	 #ifdef SEARCH_LOG_ENABLED
-		 log(LOG_INFO, "[CCRG]: [flow_pointer: %p] SEARCH_INFO: rtt_sample in newreno_rttsample function [now %lu] [usec_rtt %u] \n", ccv, get_now_us(), usec_rtt); 
+		 log(LOG_INFO, 
+		 "[CCRG]: [flow_pointer: %p] SEARCH_INFO: "
+		 "rtt_sample in newreno_rttsample function "
+		 "[now %lu] [usec_rtt %u] \n", ccv, get_now_us(), usec_rtt); 
  	 #endif
 	 /* SEARCH_end */	 
 
