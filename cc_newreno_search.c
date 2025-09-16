@@ -91,6 +91,7 @@
  /* SEARCH_begin */
  #include <netinet/cc/cc_newreno_search.h>
  #include <sys/syslog.h>
+#include <sys/khelp.h>
  #include <netinet/khelp/h_ertt.h>
  #include <sys/time.h>
  #include <netinet/tcp_hpts.h>
