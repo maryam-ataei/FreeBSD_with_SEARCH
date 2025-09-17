@@ -538,12 +538,12 @@ search_log_exit_rate(struct cc_var *ccv,
 	if (curr_delv_bytes > prev_delv_bytes)
 		delta_rate_window = curr_delv_bytes - prev_delv_bytes;
 
-		b_per_sec_window = delta_rate_window * 8;  /* b/s */
+	b_per_sec_window = delta_rate_window * 8;  /* b/s */
 
 	if (SEARCH_BIN(ccv, nreno->search_curr_idx) > SEARCH_BIN(ccv, prev_idx))
 		delta_bytes_one_bin = SEARCH_BIN(ccv, nreno->search_curr_idx) - SEARCH_BIN(ccv, prev_idx);
 
-		b_per_sec_one_bin = (delta_bytes_one_bin * 8 * 1000000) / rtt_us;  /* b/s */
+	b_per_sec_one_bin = (delta_bytes_one_bin * 8 * 1000000) / rtt_us;  /* b/s */
 
 	#ifdef SEARCH_LOG_ENABLED
 		log(LOG_INFO,
@@ -862,7 +862,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 	#ifdef SEARCH_LOG_ENABLED
 		log(LOG_INFO, 
 			"[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] "
-			"[ertt %lu] [srtt %lu] [usec_rtt %lu] [cur_bytes_ack %u] [curack %u] "
+			"[ertt %lu] [srtt %lu] [usec_rtt %u] [cur_bytes_ack %u] [curack %u] "
 			"[cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
 			ccv, 
 			get_now_us(), 
