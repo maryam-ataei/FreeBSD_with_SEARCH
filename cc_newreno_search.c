@@ -580,7 +580,8 @@ search_update(struct cc_var* ccv) {
     log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
         "SEARCH_INFO: [tcp_function_block %s][now %lu]\n",
         ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
-
+	}
+	
 	// if (nreno->last_rtt_sample > 0)
     if (strcmp(tp->t_fb->tfb_tcp_block_name, "rack") == 0) {
 		#ifdef SEARCH_LOG_ENABLED
