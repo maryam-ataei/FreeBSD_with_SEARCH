@@ -575,9 +575,19 @@ search_update(struct cc_var* ccv) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 
-	if (nreno->last_rtt_sample > 0)
+	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+	              "SEARCH_INFO: [tcp_function_block %s][now %lu]\n",
+	              ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
+	
+	// if (nreno->last_rtt_sample > 0)
+	if (tp->t_fb == &__tcp_rack) {
+		/* SEARCH_begin */
+		#ifdef SEARCH_LOG_ENABLED
+			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+				"SEARCH_INFO:  [tcp_function_block %s][now %lu]\n", ccv, tp->t_fb, get_now_us()); 
+		#endif
 		rtt_us = nreno->last_rtt_sample;
-	else
+	} else
 		rtt_us = get_ertt_us(ccv);
 
 	// //add description...
