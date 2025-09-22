@@ -565,6 +565,7 @@ static bool
 search_update(struct cc_var* ccv) {
 
 	struct newreno* nreno = ccv->cc_data;
+	struct tcpcb *tp = ccv->ccvc.tcp;
 
 	uint64_t now_us = get_now_us();
 	uint64_t rtt_us = 0; 
@@ -575,13 +576,13 @@ search_update(struct cc_var* ccv) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 
-	log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-	              "SEARCH_INFO: [tcp_function_block %s][now %lu]\n",
-	              ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
-	
+	if (tp != NULL) {
+    log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+        "SEARCH_INFO: [tcp_function_block %s][now %lu]\n",
+        ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
+
 	// if (nreno->last_rtt_sample > 0)
-	if (tp->t_fb == &__tcp_rack) {
-		/* SEARCH_begin */
+    if (strcmp(tp->t_fb->tfb_tcp_block_name, "rack") == 0) {
 		#ifdef SEARCH_LOG_ENABLED
 			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
 				"SEARCH_INFO:  [tcp_function_block %s][now %lu]\n", ccv, tp->t_fb, get_now_us()); 
