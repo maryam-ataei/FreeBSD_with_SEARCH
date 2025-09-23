@@ -422,8 +422,8 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	/* Calculate bin_value by dividing bytes_acked by 2^scale_factor */
 	bin_value = (nreno->search_bytes_curr_bin >> nreno->search_scale_factor);
 
-	if (nreno->search_curr_idx > 0) 
-		bin_value += SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
+	// if (nreno->search_curr_idx > 0) 
+	// 	bin_value += SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
 
 
 	if (bin_value > MAX_US_INT) {
