@@ -408,7 +408,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		else 
 			search_reset(nreno, RESET_BIN_DURATION_FALSE);
 
-		// nreno->search_bytes_curr_bin = bin_value_before_reset; 
+		// nreno->search_bytes_curr_bin = bin_value_before_reset; //NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 		search_init_bins(ccv, now_us, rtt_us);
 		return;
 	}
@@ -422,9 +422,10 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	/* Calculate bin_value by dividing bytes_acked by 2^scale_factor */
 	bin_value = (nreno->search_bytes_curr_bin >> nreno->search_scale_factor);
 
+	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 	// if (nreno->search_curr_idx > 0) 
 	// 	bin_value += SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
-
+	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 
 	if (bin_value > MAX_US_INT) {
 		amount_scaled =  search_bit_shifting(ccv, bin_value);
