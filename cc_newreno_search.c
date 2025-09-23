@@ -372,7 +372,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	uint64_t bin_value = 0;
 	uint8_t amount_scaled = 0; 
 	uint64_t initial_rtt = 0; 
-	uint64_t bin_value_before_reset = 0;
+	// uint64_t bin_value_before_reset = 0;
 
 	// Q: APP_limited?
 	/* FreeBSD doesn’t have an explicit app_limited field in the struct tcpcb, so we'll need to add and manage it. */
@@ -400,7 +400,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		// else
 		// 	 bin_value_before_reset = nreno->search_bytes_curr_bin +SEARCH_BIN(ccv, nreno->search_curr_idx - 1);
 
-		bin_value_before_reset = nreno->search_bytes_curr_bin;
+		// bin_value_before_reset = nreno->search_bytes_curr_bin;
 	 	//NEW CHANGE: FOR DO NOT RESET nreno->search_bytes_curr_bin
 
 		if (passed_bins > SEARCH_BINS) 
@@ -408,7 +408,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		else 
 			search_reset(nreno, RESET_BIN_DURATION_FALSE);
 
-		nreno->search_bytes_curr_bin = bin_value_before_reset; 
+		// nreno->search_bytes_curr_bin = bin_value_before_reset; 
 		search_init_bins(ccv, now_us, rtt_us);
 		return;
 	}
