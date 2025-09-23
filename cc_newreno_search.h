@@ -32,7 +32,7 @@
  
 #define MAX_US_INT 0xffff
  
-typedef uint32_t search_bin_t;
+typedef uint16_t search_bin_t;
  
 #define V_use_search 1
 #define V_use_hystartpp 0
