@@ -577,11 +577,11 @@ search_update(struct cc_var* ccv) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 
-	if (tp != NULL) {
-    log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-        "SEARCH_DEBUGGING: [tcp_function_block %s][now %lu]\n",
-        ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
-	}
+	// if (tp != NULL) {
+    // log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+    //     "SEARCH_DEBUGGING: [tcp_function_block %s][now %lu]\n",
+    //     ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
+	// }
 	
 	// if (nreno->last_rtt_sample > 0)
     if (strcmp(tp->t_fb->tfb_tcp_block_name, "rack") == 0) {
@@ -598,10 +598,7 @@ search_update(struct cc_var* ccv) {
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
 	if (nreno->search_curr_idx < 0) {
-
-		// #ifdef SEARCH_LOG_ENABLED
-			//log(LOG_INFO, "SEARCH_INFO: Inite bin\n");
-		// #endif
+		
 		search_init_bins(ccv, now_us, rtt_us);
 		return false;
 	}
@@ -1155,14 +1152,7 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		return;
 	}
 	/* SEARCH_begin */
-	nreno->last_rtt_sample = usec_rtt;
- 	// #ifdef SEARCH_LOG_ENABLED
-	// 	log(LOG_INFO, 
-	// 	"[CCRG]: [flow_pointer: %p] SEARCH_INFO: "
-	// 	"rtt_sample in newreno_rttsample function "
-	// 	"[now %lu] [usec_rtt %u] \n", ccv, get_now_us(), usec_rtt); 
- 	// #endif
-	/* SEARCH_end */	 
+	nreno->last_rtt_sample = usec_rtt;	 
 
 	nreno->css_rttsample_count++;
 	nreno->css_last_fas = fas;
