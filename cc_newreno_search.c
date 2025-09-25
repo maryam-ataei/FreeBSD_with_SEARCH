@@ -147,6 +147,26 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
+
+// static uint64_t get_now_us(void) {
+// struct timeval tv;
+// getmicrouptime(&tv);  // Uptime since boot
+// return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
+//}
+static inline uint64_t
+get_now_us(void)
+{
+    struct timeval tv;
+    tcp_get_usecs(&tv);
+    /* 
+    * NOTE: Be careful with overflow here!
+    * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
+    * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
+    * jumping from ~4,294,966,xxx back to a small number.
+    * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
+    */
+    return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
+}
 /* SEARCH_end */
 
 static void
@@ -270,25 +290,6 @@ newreno_cb_destroy(struct cc_var *ccv)
 }
 
 /* SEARCH_begin */
-// static uint64_t get_now_us(void) {
-// struct timeval tv;
-// getmicrouptime(&tv);  // Uptime since boot
-// return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
-//}
-static inline uint64_t
-get_now_us(void)
-{
-    struct timeval tv;
-    tcp_get_usecs(&tv);
-    /* 
-    * NOTE: Be careful with overflow here!
-    * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
-    * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
-    * jumping from ~4,294,966,xxx back to a small number.
-    * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
-    */
-    return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
-}
 
 static uint64_t 
 get_srtt_us(struct cc_var* ccv) {
