@@ -254,6 +254,11 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
     	}
 	}
 
+
+	#ifdef SEARCH_LOG_ENABLED
+		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
+	#endif
 	/* SEARCH_end */
 	return (0);
 }
@@ -385,7 +390,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	#ifdef SEARCH_LOG_ENABLED
 		log(LOG_INFO, 
-	 		"[CCRG]: [flow_pointer %p] SEARCH_DEBUGGING:[now %lu]"
+	 		"[CCRG]: [flow_pointer %p] SEARCH_INFO:[now %lu]"
 	 		" Update bins [passed_bins %d] [initial_rtt %lu]\n", 
 	 		ccv, now_us, passed_bins, initial_rtt);
 	#endif
@@ -579,7 +584,7 @@ search_update(struct cc_var* ccv) {
 
 	// if (tp != NULL) {
     // log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-    //     "SEARCH_DEBUGGING: [tcp_function_block %s][now %lu]\n",
+    //     "DEBUGGING: [tcp_function_block %s][now %lu]\n",
     //     ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
 	// }
 	
@@ -587,7 +592,7 @@ search_update(struct cc_var* ccv) {
     if (strcmp(tp->t_fb->tfb_tcp_block_name, "rack") == 0) {
 		#ifdef SEARCH_LOG_ENABLED
 			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-				"SEARCH_DEBUGGING:  [tcp_function_block %s][now %lu]\n", ccv, tp->t_fb->tfb_tcp_block_name, get_now_us()); 
+				"DEBUGGING:  [tcp_function_block %s][now %lu]\n", ccv, tp->t_fb->tfb_tcp_block_name, get_now_us()); 
 		#endif
 		rtt_us = nreno->last_rtt_sample;
 	} else
@@ -818,7 +823,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 				/* SEARCH_begin */
 				#ifdef SEARCH_LOG_ENABLED
 		 			log(LOG_INFO, 
-		 		 		"[CCRG]: [flow_pointer %p] SEARCH_DEBUGGING: [now %lu] "
+		 		 		"[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] "
 		 		 		"[incr %u] [snd_nxt %u] [snd_max %u] [nseq %u] [abs_val %u]\n", 
 			 			ccv, 
 			 			get_now_us(), 
@@ -857,7 +862,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 		/* SEARCH_begin */
 		#ifdef SEARCH_LOG_ENABLED
  		log(LOG_INFO, 
- 			"[CCRG]: [flow_pointer %p] SEARCH_DEBUGGING: [now %lu] "
+ 			"[CCRG]: [flow_pointer %p] DEBUGGING: [now %lu] "
  			"[incr %u] [cw %u] [cwnd %u]\n", 
 	 		ccv, 
 	 		get_now_us(), 
