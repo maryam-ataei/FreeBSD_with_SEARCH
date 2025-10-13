@@ -230,6 +230,9 @@ static int
 newreno_cb_init(struct cc_var *ccv, void *ptr)
 {
 	struct newreno *nreno;
+	/* SEARCH_begin */
+	struct tcpcb *tp = ccv->ccvc.tcp;
+	/* SEARCH_end */
 
 	INP_WLOCK_ASSERT(tptoinpcb(ccv->ccvc.tcp));
 	if (ptr == NULL) {
@@ -277,7 +280,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 
 	#ifdef SEARCH_LOG_ENABLED
 		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
+			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u] [total_bytes_sent %u] [total_bytes_acked %u]\n", ccv, get_now_us(), tp->snd_cwnd, tp->snd_ssthresh, tp->t_sndbytes,tp->t_bytes_acked); 
 	#endif
 	/* SEARCH_end */
 	return (0);
@@ -692,6 +695,9 @@ static void
 newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 
 	struct newreno *nreno;
+	/* SEARCH_begin */
+	struct tcpcb *tp = ccv->ccvc.tcp;
+	/* SEARCH_end */
 
 	nreno = ccv->cc_data;
 
@@ -881,7 +887,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 		log(LOG_INFO, 
 			"[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] "
 			"[ertt %lu] [srtt %lu] [usec_rtt %u] [cur_bytes_ack %u] [curack %u] "
-			"[cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u]\n", 
+			"[cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] [total_bytes_sent %u] [total_bytes_acked %u]\n", 
 			ccv, 
 			get_now_us(), 
 			get_ertt_us(ccv),
@@ -889,10 +895,12 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 			nreno->last_rtt_sample,
 			ccv->bytes_this_ack,
 			ccv->curack,
-			CCV(ccv, snd_cwnd),
-			CCV(ccv, snd_ssthresh),
-			CCV(ccv, t_maxseg),
-			nreno->search_bytes_curr_bin);
+			tp->snd_cwnd,
+			tp->snd_ssthresh,
+			tp->t_maxseg,
+			nreno->search_bytes_curr_bin,
+			tp->t_sndbytes,
+			tp->t_bytes_acked);
 	#endif
 	/* SEARCH_end */
 }
