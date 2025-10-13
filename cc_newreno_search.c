@@ -280,7 +280,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 
 	#ifdef SEARCH_LOG_ENABLED
 		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u] [total_bytes_sent %lu] [total_bytes_acked %u]\n", ccv, get_now_us(), tp->snd_cwnd, tp->snd_ssthresh, tp->t_sndbytes,tp->t_bytes_acked); 
+			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u] [total_bytes_sent %lu] [total_bytes_acked %u]\n", ccv, get_now_us(), tp->snd_cwnd, tp->snd_ssthresh, tp->t_sndbytes,tp->snd_una - tp->iss); 
 	#endif
 	/* SEARCH_end */
 	return (0);
@@ -899,7 +899,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 			tp->t_maxseg,
 			nreno->search_bytes_curr_bin,
 			tp->t_sndbytes,
-			tp->t_bytes_acked);
+			tp->snd_una - tp->iss);
 	#endif
 	/* SEARCH_end */
 }
