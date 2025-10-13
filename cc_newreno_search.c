@@ -589,15 +589,15 @@ search_update(struct cc_var* ccv) {
     //     ccv, tp->t_fb->tfb_tcp_block_name, get_now_us());
 	// }
 	
-	// if (nreno->last_rtt_sample > 0)
-    if (strcmp(tp->t_fb->tfb_tcp_block_name, "rack") == 0) {
-		#ifdef SEARCH_LOG_ENABLED
-			log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-				"DEBUGGING:  [tcp_function_block %s][now %lu]\n", ccv, tp->t_fb->tfb_tcp_block_name, get_now_us()); 
-		#endif
+	if (nreno->last_rtt_sample > 0){
+    // if (strcmp(tp->t_fb->tfb_tcp_block_name, "rack") == 0) {
+	// 	#ifdef SEARCH_LOG_ENABLED
+	// 		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
+	// 			"DEBUGGING:  [tcp_function_block %s][now %lu]\n", ccv, tp->t_fb->tfb_tcp_block_name, get_now_us()); 
+	// 	#endif
 		rtt_us = nreno->last_rtt_sample;
 	} else
-		rtt_us = get_ertt_us(ccv);
+		rtt_us = get_srtt_us(ccv);
 
 	// //add description...
 	// nreno->search_bytes_curr_bin += ccv->bytes_this_ack; 
