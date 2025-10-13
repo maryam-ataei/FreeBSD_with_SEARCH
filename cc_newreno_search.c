@@ -280,7 +280,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 
 	#ifdef SEARCH_LOG_ENABLED
 		log(LOG_INFO, "[CCRG]: [flow_pointer: %p] "
-			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u] [total_bytes_sent %u] [total_bytes_acked %u]\n", ccv, get_now_us(), tp->snd_cwnd, tp->snd_ssthresh, tp->t_sndbytes,tp->t_bytes_acked); 
+			"DEBUGGING:Connection is initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u] [total_bytes_sent %lu] [total_bytes_acked %u]\n", ccv, get_now_us(), tp->snd_cwnd, tp->snd_ssthresh, tp->t_sndbytes,tp->t_bytes_acked); 
 	#endif
 	/* SEARCH_end */
 	return (0);
@@ -887,7 +887,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 		log(LOG_INFO, 
 			"[CCRG]: [flow_pointer %p] ACK_FUNC_INFO: [now %lu] "
 			"[ertt %lu] [srtt %lu] [usec_rtt %u] [cur_bytes_ack %u] [curack %u] "
-			"[cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] [total_bytes_sent %u] [total_bytes_acked %u]\n", 
+			"[cwnd_B %u] [ssthresh %u] [mss %u] [bytes_cumulative %u] [total_bytes_sent %lu] [total_bytes_acked %u]\n", 
 			ccv, 
 			get_now_us(), 
 			get_ertt_us(ccv),
