@@ -2,6 +2,8 @@
 
 This repository includes the implementation of **TCP SEARCH (Slow start Exit At Right CHokepoint)** in FreeBSD.
 
+In this version we use both sent bytes and delivered bytes for doing SEARCH analysis to exit slow start.
+
 ## Files Included
 
 - `cc_newreno_search.c`  
