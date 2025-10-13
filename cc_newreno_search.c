@@ -575,7 +575,6 @@ static bool
 search_update(struct cc_var* ccv) {
 
 	struct newreno* nreno = ccv->cc_data;
-	struct tcpcb *tp = ccv->ccvc.tcp;
 
 	uint64_t now_us = get_now_us();
 	uint64_t rtt_us = 0; 
