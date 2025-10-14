@@ -326,7 +326,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	}
 
 	
-	DEBUG_LOG("[flow_pointer: %p] Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
+	DEBUG_LOG(" Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
 		ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
 	/* SEARCH_end */
 
@@ -550,6 +550,18 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) = (search_bin_t)acked_val;
 	SEARCH_SENT_BIN(ccv,  nreno->search_curr_idx) = (search_bin_t)sent_val;
+
+	SEARCH_LOG(" SEARCH SENT BINS: ");
+	for (int i = 0; i < SEARCH_SENT_BINS; i++) {
+		log(LOG_INFO, "| %hu ", nreno->search_sent_bin[i]);
+	}
+	log(LOG_INFO, "|\n");
+
+	SEARCH_LOG(" SEARCH ACKED BINS: ");
+	for (int i = 0; i < SEARCH_ACKED_BINS; i++) {
+		log(LOG_INFO, "| %hu ", nreno->search_acked_bin[i]);
+	}
+	log(LOG_INFO, "|\n");
 }
 
 /*
