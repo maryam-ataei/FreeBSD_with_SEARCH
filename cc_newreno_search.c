@@ -327,7 +327,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 
 	
 	DEBUG_LOG(" Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
-		ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
+		get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
 	/* SEARCH_end */
 
 	return (0);
