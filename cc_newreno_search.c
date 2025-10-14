@@ -515,10 +515,10 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	SEARCH_LOG(" SEARCH_INFO:[now %lu] Update bins: [passed_bins %d] [initial_rtt %lu]\n", 
 		now_us, passed_bins, initial_rtt);
 
-	/* Need reset due to missed bins*/
+	/* Need reset due to missed bins */
 	if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
 
-		if (passed_bins > SEARCH_BINS) 
+		if (passed_bins > SEARCH_ACKED_BINS) 
 			search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		else 
 			search_reset(nreno, RESET_BIN_DURATION_FALSE);
