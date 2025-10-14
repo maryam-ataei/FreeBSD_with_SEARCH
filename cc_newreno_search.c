@@ -781,7 +781,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		
 		curr_delv_bytes = (int64_t)search_compute_window(
 			ccv,
-			nreno->search_curr_idx - SEARCH_ACKED_BINS,
+			nreno->search_curr_idx - SEARCH_ACKED_BINS - 1,
 			nreno->search_curr_idx,
 			0,
 			SEARCH_WIN_ACKED);
