@@ -40,15 +40,21 @@ typedef uint16_t search_bin_t;
 #define V_CWND_ROLLBACK 0
  
 #define SEARCH_WINDOW_SIZE_FACTOR 35
-#define SEARCH_BINS 10
-#define SEARCH_EXTRA_BINS 15
-#define SEARCH_TOTAL_BINS (SEARCH_BINS + SEARCH_EXTRA_BINS)
+#define SEARCH_ACKED_BINS 10
+#define SEARCH_SENT_BINS 15
+#define SEARCH_TOTAL_BINS (SEARCH_ACKED_BINS + SEARCH_SENT_BINS)
 #define SEARCH_THRESH 35
 #define SEARCH_ALPHA MAX_US_INT
+#define IDX_WRAP(i, N) ((((int)(i) % (int)(N)) + (int)(N)) % (int)(N))	/* Safe index wrapper */
 
 enum unset_bin_duration {
 	RESET_BIN_DURATION_TRUE,		// Reset bin duration
 	RESET_BIN_DURATION_FALSE		// Do not reset bin duration
+};
+
+enum search_win_type {
+    SEARCH_WIN_ACKED = 0,
+    SEARCH_WIN_SENT  = 1,
 };
  
 /* SEARCH_end */
@@ -66,18 +72,30 @@ struct newreno {
 	uint32_t css_fas_at_css_entry;
 	uint32_t css_lowrtt_fas;
 	uint32_t css_last_fas;
- 
 	/* SEARCH_begin */
+	/*
+	 * SEARCH: Data tracking extensions for congestion estimation.
+	 *
+	 * These fields are used to monitor both delivered and sent bytes
+	 * over sliding bins (ACKED and SENT) during the slow-start phase.
+	 * The mechanism estimates congestion based on delivery progression
+	 * rather than solely on exponential cwnd growth.
+	 */
 	uint32_t last_rtt_sample;					/* Most recent RTT sample (in microseconds) from rttsample() */
 	uint32_t search_bin_duration_us;			/* duration of each bin in microsecond */
 	int32_t  search_curr_idx;					/* total number of bins */
 	uint64_t search_bin_end_us;					/* end time of the latest bin in microsecond */
-	search_bin_t search_bin[SEARCH_TOTAL_BINS];	/* array to keep bytes for bins */
+	search_bin_t search_acked_bin[SEARCH_ACKED_BINS];	/* array to keep acked bytes for bins */
+	search_bin_t search_sent_bin[SEARCH_SENT_BINS];	/* array to keep sent bytes for bins */
 	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
 	uint32_t search_bytes_curr_bin;				/* bytes_acked during this bin*/
 };
  
-#define SEARCH_BIN(ccv, index) ((struct newreno*)(ccv)->cc_data)->search_bin[(index) % SEARCH_TOTAL_BINS]
+#undef  SEARCH_ACKED_BIN
+#undef  SEARCH_SENT_BIN
+
+#define SEARCH_ACKED_BIN(ccv, i) (((struct newreno*)(ccv)->cc_data)->search_acked_bin[IDX_WRAP((i), SEARCH_ACKED_BINS)])
+#define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[IDX_WRAP((i), SEARCH_SENT_BINS)])
 /* SEARCH_end */
 
 struct cc_newreno_opts {
