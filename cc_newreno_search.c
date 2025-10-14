@@ -551,7 +551,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) = (search_bin_t)acked_val;
 	SEARCH_SENT_BIN(ccv,  nreno->search_curr_idx) = (search_bin_t)sent_val;
 
-	SEARCH_LOG(" SEARCH SENT BINS: ");
+	SEARCH_LOG(" SEARCH SENT BINS: " );
 	for (int i = 0; i < SEARCH_SENT_BINS; i++) {
 		log(LOG_INFO, "| %hu ", nreno->search_sent_bin[i]);
 	}
