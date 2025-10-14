@@ -48,13 +48,13 @@ typedef uint16_t search_bin_t;
 #define IDX_WRAP(i, N) ((((int)(i) % (int)(N)) + (int)(N)) % (int)(N))	/* Safe index wrapper */
 
 enum unset_bin_duration {
-	RESET_BIN_DURATION_TRUE,		// Reset bin duration
-	RESET_BIN_DURATION_FALSE		// Do not reset bin duration
+	RESET_BIN_DURATION_TRUE,	// Reset bin duration
+	RESET_BIN_DURATION_FALSE	// Do not reset bin duration
 };
 
 enum search_win_type {
-    SEARCH_WIN_ACKED = 0,
-    SEARCH_WIN_SENT  = 1,
+    SEARCH_WIN_ACKED = 0,	// Calculate window of acked bytes
+    SEARCH_WIN_SENT  = 1,	// Calculate window of sent bytes
 };
  
 /* SEARCH_end */
@@ -88,7 +88,7 @@ struct newreno {
 	search_bin_t search_acked_bin[SEARCH_ACKED_BINS];	/* array to keep acked bytes for bins */
 	search_bin_t search_sent_bin[SEARCH_SENT_BINS];	/* array to keep sent bytes for bins */
 	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
-	uint32_t search_bytes_curr_bin;				/* bytes_acked during this bin*/
+	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
 };
  
 #undef  SEARCH_ACKED_BIN
