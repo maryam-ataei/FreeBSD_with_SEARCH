@@ -30,9 +30,9 @@
 /* SEARCH_begin */
 #define CCALGONAME_NEWRENO "newreno_search"
  
-#define MAX_US_INT 0xffff
+#define MAX_US_INT  0xffffffff  //16bit	0xffff   32bit	0xffffffff
  
-typedef uint16_t search_bin_t;
+typedef uint32_t search_bin_t;
  
 #define V_use_search 1
 #define V_use_hystartpp 0
