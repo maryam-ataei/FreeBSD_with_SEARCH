@@ -553,13 +553,13 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	SEARCH_LOG(" SEARCH SENT BINS: " );
 	for (int i = 0; i < SEARCH_SENT_BINS; i++) {
-		log(LOG_INFO, "| %hu ", nreno->search_sent_bin[i]);
+		log(LOG_INFO, "| %u ", nreno->search_sent_bin[i]);
 	}
 	log(LOG_INFO, "|\n");
 
 	SEARCH_LOG(" SEARCH ACKED BINS: ");
 	for (int i = 0; i < SEARCH_ACKED_BINS; i++) {
-		log(LOG_INFO, "| %hu ", nreno->search_acked_bin[i]);
+		log(LOG_INFO, "| %u ", nreno->search_acked_bin[i]);
 	}
 	log(LOG_INFO, "|\n");
 }
