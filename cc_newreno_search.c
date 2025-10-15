@@ -448,7 +448,7 @@ search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	if (nreno->search_bin_duration_us == 0)
 		// Window duration: proportional to RTT × window size factor
-		nreno->search_bin_duration_us = (rtt_us * SEARCH_WINDOW_SIZE_FACTOR) / (SEARCH_ACKED_BINS * 10);
+		nreno->search_bin_duration_us = (rtt_us * SEARCH_WINDOW_SIZE_FACTOR) / (SEARCH_WIN_BINS * 10);
 
 	nreno->search_bin_end_us = now_us + nreno->search_bin_duration_us;
 	nreno->search_curr_idx = 0;
@@ -518,7 +518,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	/* Need reset due to missed bins */
 	if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
 
-		if (passed_bins > SEARCH_ACKED_BINS) 
+		if (passed_bins > SEARCH_WIN_BINS) 
 			search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		else 
 			search_reset(nreno, RESET_BIN_DURATION_FALSE);
@@ -652,7 +652,7 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	if (V_CWND_ROLLBACK) {
 
-		initial_rtt = nreno->search_bin_duration_us * SEARCH_ACKED_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
+		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 		cong_idx = nreno->search_curr_idx - ((2 * initial_rtt) / nreno->search_bin_duration_us);
 
 		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
@@ -777,18 +777,18 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	 * - current window: last SEARCH_ACKED_BIN (acked array)
 	 * - previous window: ends at prev_idx, length SEARCH_ACKED_BIN (sent array)
 	*/
-	if (prev_idx >= SEARCH_ACKED_BINS && (nreno->search_curr_idx - prev_idx) < (SEARCH_SENT_BINS - 1)) {
+	if (prev_idx >= SEARCH_WIN_BINS && (nreno->search_curr_idx - prev_idx) < (SEARCH_EXTRA_SENT_BINS - 1)) {
 		
 		curr_delv_bytes = (int64_t)search_compute_window(
 			ccv,
-			nreno->search_curr_idx - SEARCH_ACKED_BINS - 1,
+			nreno->search_curr_idx - SEARCH_WIN_BINS,
 			nreno->search_curr_idx,
 			0,
 			SEARCH_WIN_ACKED);
 
 		prev_sent_bytes = (int64_t)search_compute_window(
 			ccv,
-			prev_idx - SEARCH_ACKED_BINS,
+			prev_idx - SEARCH_WIN_BINS,
 			prev_idx,
 			fraction,
 			SEARCH_WIN_SENT);
