@@ -786,6 +786,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 			0,
 			SEARCH_WIN_ACKED);
 
+		fraction = ((rtt_us % nreno->search_bin_duration_us) * 100 / nreno -> search_bin_duration_us);
+
 		prev_sent_bytes = (int64_t)search_compute_window(
 			ccv,
 			prev_idx - SEARCH_WIN_BINS,
