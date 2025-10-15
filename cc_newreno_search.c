@@ -828,7 +828,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 	SEARCH_LOG(" SEARCH_INFO: [now %lu] [bin_duration %d] "
 		"[bin_end %lu] [curr_delv %ld] [prev_delv %ld] [norm_100 %d] "
-		"[scale_factor %d] [curr_idx %d]\n",
+		"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
 		now_us, 
 		nreno->search_bin_duration_us, 
 		nreno->search_bin_end_us, 
@@ -836,7 +836,9 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		prev_sent_bytes,
 		norm_diff,
 		nreno->search_scale_factor,
-		nreno->search_curr_idx
+		nreno->search_curr_idx,
+		prev_idx,
+		fraction
 		);
 
 	return false;
