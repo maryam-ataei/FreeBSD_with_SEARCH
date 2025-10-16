@@ -870,9 +870,9 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 	/* SEARCH_end */
 
-	SEARCH_LOG("[SEARCH][DEBUG] type=%d in_recovery=%d cwnd_limited=%d "
-           "t_flags=%x snd_cwnd=%u ssthresh=%u bytes_this_ack=%u "
-           "flags=%x curack=%u total_acked=%u total_sent=%lu",
+	SEARCH_LOG("[SEARCH][DEBUG] [type %d] [in_recovery %d] [cwnd_limited %d] "
+           "[t_flags %x] [snd_cwnd %u] [ssthresh %u] [bytes_this_ack %u] "
+           "[flags %x]  [total_acked %u] [total_sent %lu]",
            type,
            IN_RECOVERY(CCV(ccv, t_flags)),
            (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
@@ -881,7 +881,6 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
            CCV(ccv, snd_ssthresh),
            ccv->bytes_this_ack,
            ccv->flags,
-           CCV(ccv, curack),
            nreno->search_cumulative_acked_bytes,
            nreno->search_total_bytes_sent);
 
