@@ -882,7 +882,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
            ccv->bytes_this_ack,
            ccv->flags,
            nreno->search_cumulative_acked_bytes,
-           nreno->search_total_bytes_sent);
+           CCV(ccv, t_sndbytes));
 
 
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
