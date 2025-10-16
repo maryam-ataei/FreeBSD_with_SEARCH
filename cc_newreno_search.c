@@ -611,6 +611,7 @@ search_compute_window(struct cc_var *ccv,
     }
 
     w += (search_get_bin(ccv, right, window_type) - search_get_bin(ccv, right - 1, window_type)) * (100 - fraction) / 100;
+    
     return w;
 }
 
@@ -869,10 +870,28 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 	/* SEARCH_end */
 
+	SEARCH_LOG("[SEARCH][DEBUG] type=%d in_recovery=%d cwnd_limited=%d "
+           "t_flags=%x snd_cwnd=%u ssthresh=%u bytes_this_ack=%u "
+           "flags=%x curack=%u total_acked=%u total_sent=%lu",
+           type,
+           IN_RECOVERY(CCV(ccv, t_flags)),
+           (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
+           CCV(ccv, t_flags),
+           CCV(ccv, snd_cwnd),
+           CCV(ccv, snd_ssthresh),
+           ccv->bytes_this_ack,
+           ccv->flags,
+           CCV(ccv, curack),
+           nreno->search_cumulative_acked_bytes,
+           nreno->search_total_bytes_sent);
+
+
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
 		(ccv->flags & CCF_CWND_LIMITED)) {
 		u_int cw = CCV(ccv, snd_cwnd);
 		u_int incr = CCV(ccv, t_maxseg);
+
+		
 
 		/*
 		* Regular in-order ACK, open the congestion window.
