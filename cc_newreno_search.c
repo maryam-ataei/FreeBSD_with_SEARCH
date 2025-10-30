@@ -581,7 +581,7 @@ search_compute_sent_window(struct cc_var *ccv,
                       int32_t left, int32_t right, uint32_t fraction)
 {
     uint64_t w = 0;
-    w  = SEARCH_SENT_BIN(ccv, right - 1) - search_get_bin(ccv, left);
+    w  = SEARCH_SENT_BIN(ccv, right - 1) - SEARCH_SENT_BIN(ccv, left);
 
     if (left == 0) {
         w += SEARCH_SENT_BIN(ccv, left) * fraction / 100;
@@ -609,7 +609,7 @@ search_compute_delv_window(struct cc_var *ccv,
 {
     uint64_t w = 0;
 
-    w = SEARCH_ACKED_BIN(ccv, right) - SEARCH_ACKED_BIN(ccv, left)
+    w = SEARCH_ACKED_BIN(ccv, right) - SEARCH_ACKED_BIN(ccv, left);
 
     return w;
 }
