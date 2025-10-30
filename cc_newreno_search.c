@@ -663,10 +663,11 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		overshoot_cwnd = overshoot_bytes / CCV(ccv, t_maxseg); //Q: mss is tcp_fixed_maxseg(ccv->ccvc.tcp) or CCV(ccv, t_maxseg)
 
 		SEARCH_LOG(" SEARCH_INFO: [now %lu]"
-		 	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [updated_cwnd %u]\n", 
+		 	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [cong_idx %u] [updated_cwnd %u]\n", 
 				now_us, 
 				CCV(ccv, snd_cwnd), 
 				overshoot_cwnd,
+				cong_idx,
 				max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
 
 		/*
