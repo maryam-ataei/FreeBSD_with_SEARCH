@@ -577,7 +577,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
  */
 
 static inline uint64_t
-search_compute_delv_window(struct cc_var *ccv,
+search_compute_sent_window(struct cc_var *ccv,
                       int32_t left, int32_t right, uint32_t fraction)
 {
     uint64_t w = 0;
@@ -796,12 +796,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 		fraction = ((rtt_us % nreno->search_bin_duration_us) * 100 / nreno -> search_bin_duration_us);
 
-		prev_sent_bytes = (int64_t)search_compute_window(
+		prev_sent_bytes = (int64_t)search_compute_sent_window(
 			ccv,
 			prev_idx - SEARCH_WIN_BINS,
 			prev_idx,
-			fraction,
-			SEARCH_WIN_SENT);
+			fraction);
 
 		if (prev_sent_bytes > 0) {
 			norm_diff = (prev_sent_bytes - curr_delv_bytes) * 100 / prev_sent_bytes;
