@@ -313,7 +313,8 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	 */
 	nreno->last_rtt_sample = 0;
 	nreno->search_cumulative_acked_bytes = 0;
-	nreno->start_time = 0
+	nreno->start_time = 0;
+	nreno->found_exit = 0;
 	if (V_use_search){
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 	}
@@ -1053,9 +1054,11 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
         				incr = 0;	/* freeze cwnd increase upon exit detection */
     				}
 
-    				if (now_us - nreno->start_time >= 700000) {
+    				if (now_us - nreno->start_time >= 700000 && nreno->found_exit == 0) {
 
     				CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
+
+    				nreno->found_exit = 1;
 
 					search_reset(nreno, RESET_BIN_DURATION_TRUE);
 

@@ -92,6 +92,7 @@ struct newreno {
 	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
 	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
 	uint64_t start_time;
+	uint8_t	found_exit;
 };
  
 #undef  SEARCH_ACKED_BIN

@@ -661,6 +661,14 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 		/* Calculate the rollback congestion window based on overshoot divided by MSS */
 		overshoot_cwnd = overshoot_bytes / CCV(ccv, t_maxseg); //Q: mss is tcp_fixed_maxseg(ccv->ccvc.tcp) or CCV(ccv, t_maxseg)
+
+		SEARCH_LOG(" SEARCH_INFO: [now %lu]"
+		 	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [updated_cwnd %u]\n", 
+				now_us, 
+				CCV(ccv, snd_cwnd), 
+				overshoot_cwnd,
+				max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+
 		/*
 		* Reduce the current congestion window,
 		* but guard so it doesn't drop below the initial cwnd
@@ -1293,18 +1301,26 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 			 */
 			if (ccv->flags & CCF_HYSTART_CONS_SSTH) {
 				/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
-			 	if (V_use_hystartpp)
+			 	if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
+					DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[1] [now %lu]\n", get_now_us()); 
+				}
 			} else {
-				if (V_use_hystartpp)
+				if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
+					DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[2] [now %lu]\n", get_now_us()); 
+				}
 			}
-			if (V_use_hystartpp)
+			if (V_use_hystartpp){
 				CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
+				DEBUG_LOG( " DEBUGGING: cwnd is set by HyStartPP [now %lu]\n", get_now_us()); 
+			}
 			nreno->css_entered_at_round = round_cnt;
 		} else {
-			if (V_use_hystartpp)
+			if (V_use_hystartpp){
 				CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
+				DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[3] [now %lu]\n", get_now_us());
+			}
 			/* SEARCH_end */
 
 			/* Turn off the CSS flag */
