@@ -628,7 +628,6 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	struct newreno* nreno = ccv->cc_data;
 
 	int32_t cong_idx = 0;
-	uint32_t initial_rtt = 0;
 	uint32_t overshoot_cwnd = 0;
 
 	/*
@@ -652,29 +651,33 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	if (V_CWND_ROLLBACK) {
 
-		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
-		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
-		overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
+		if (nreno->search_curr_idx - cong_idx >= 10){
 
-		// SEARCH_LOG(" SEARCH_INFO: [now %lu]"
-		//  	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [cong_idx %u] [updated_cwnd %u]\n", 
-		// 		now_us, 
-		// 		CCV(ccv, snd_cwnd), 
-		// 		overshoot_cwnd,
-		// 		cong_idx,
-		// 		max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+			/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
+			overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
 
-		/*
-		* Reduce the current congestion window,
-		* but guard so it doesn't drop below the initial cwnd
-		* or is not larger than the current cwnd (in case of TCP reset)
-		*/
-		if (overshoot_cwnd < CCV(ccv, snd_cwnd))
-			CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments);
+			// SEARCH_LOG(" SEARCH_INFO: [now %lu]"
+			//  	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [cong_idx %u] [updated_cwnd %u]\n", 
+			// 		now_us, 
+			// 		CCV(ccv, snd_cwnd), 
+			// 		overshoot_cwnd,
+			// 		cong_idx,
+			// 		max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+
+			/*
+			* Reduce the current congestion window,
+			* but guard so it doesn't drop below the initial cwnd
+			* or is not larger than the current cwnd (in case of TCP reset)
+			*/
+			if (overshoot_cwnd < CCV(ccv, snd_cwnd))
+				CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments);
+			else 
+				CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
+		}
 		else 
-			CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
+			DEBUG_LOG("DEBUG: [now %lu] cong_idx is too small for rollback [cong_idx %u] \n", now_us, cong_idx); 
 	}
 
 	CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
