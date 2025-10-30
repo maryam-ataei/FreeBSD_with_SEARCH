@@ -565,55 +565,55 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 }
 
 /*
- * SEARCH: Retrieve bin value with index wrapping.
- *
- * Returns the bin value (acked or sent) for a given index, wrapping
- * around the circular buffer as necessary.
- */
-static inline uint64_t
-search_get_bin(struct cc_var *ccv, int32_t idx, enum search_win_type window_type)
-{
-    /* Use the right ring, with wrap */
-    if (window_type == SEARCH_WIN_ACKED)
-    	// IDX_WRAP ensures circular indexing for the SEARCH bin ring.
-        return (uint64_t) (((struct newreno*)ccv->cc_data)->search_acked_bin[IDX_WRAP(idx, SEARCH_ACKED_BINS)]);
-    else
-        return (uint64_t) (((struct newreno*)ccv->cc_data)->search_sent_bin[IDX_WRAP(idx, SEARCH_SENT_BINS)]);
-}
-
-
-/*
- * SEARCH: Compute window integral with fractional interpolation.
+ * SEARCH: Compute sent window integral with fractional interpolation.
  *
  * Calculates the cumulative bytes within [left, right] indices for
- * either the ACKed or SENT window. Adds fractional contributions
+ * the SENT window. Adds fractional contributions
  * for partial bin edges using linear interpolation.
  *
  * Arguments:
  *  - left, right: window bounds (bin indices)
  *  - fraction: percentage (0–100) for fractional coverage at edges
- *  - window_type: SEARCH_WIN_ACKED or SEARCH_WIN_SENT
  */
+
 static inline uint64_t
-search_compute_window(struct cc_var *ccv,
-                      int32_t left, int32_t right,
-                      uint32_t fraction,
-                      enum search_win_type window_type)
+search_compute_delv_window(struct cc_var *ccv,
+                      int32_t left, int32_t right, uint32_t fraction)
 {
     uint64_t w = 0;
-
-    w  = search_get_bin(ccv, right - 1, window_type) - search_get_bin(ccv, left, window_type);
+    w  = SEARCH_SENT_BIN(ccv, right - 1) - search_get_bin(ccv, left);
 
     if (left == 0) {
-        w += search_get_bin(ccv, left, window_type) * fraction / 100;
+        w += SEARCH_SENT_BIN(ccv, left) * fraction / 100;
     } else {
-        w += (search_get_bin(ccv, left, window_type) - search_get_bin(ccv, left - 1, window_type)) * fraction / 100;
+        w += (SEARCH_SENT_BIN(ccv, left) - SEARCH_SENT_BIN(ccv, left - 1)) * fraction / 100;
     }
 
-    w += (search_get_bin(ccv, right, window_type) - search_get_bin(ccv, right - 1, window_type)) * (100 - fraction) / 100;
+    w += (SEARCH_SENT_BIN(ccv, right) - SEARCH_SENT_BIN(ccv, right - 1)) * (100 - fraction) / 100;
     
     return w;
 }
+
+/*
+ * SEARCH: Compute delv window integral with fractional interpolation.
+ *
+ * Calculates the cumulative sent bytes within [left, right] indices for
+ * the ACKed window. 
+ *
+ * Arguments:
+ *  - left, right: window bounds (bin indices)
+ */
+static inline uint64_t
+search_compute_delv_window(struct cc_var *ccv,
+                      int32_t left, int32_t right)
+{
+    uint64_t w = 0;
+
+    w = SEARCH_ACKED_BIN(ccv, right) - SEARCH_ACKED_BIN(ccv, left)
+
+    return w;
+}
+
 
 /*
  * SEARCH: Exit slow start and rollback congestion window if enabled.
@@ -657,7 +657,7 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		cong_idx = nreno->search_curr_idx - ((2 * initial_rtt) / nreno->search_bin_duration_us);
 
 		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
-		overshoot_bytes = (int64_t)search_compute_window(ccv, cong_idx, nreno->search_curr_idx, 0, SEARCH_WIN_ACKED);
+		overshoot_bytes = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
 
 		/* Calculate the rollback congestion window based on overshoot divided by MSS */
 		overshoot_cwnd = overshoot_bytes / CCV(ccv, t_maxseg); //Q: mss is tcp_fixed_maxseg(ccv->ccvc.tcp) or CCV(ccv, t_maxseg)
@@ -789,12 +789,10 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	*/
 	if (prev_idx >= SEARCH_WIN_BINS && (nreno->search_curr_idx - prev_idx) < (SEARCH_EXTRA_SENT_BINS - 1)) {
 		
-		curr_delv_bytes = (int64_t)search_compute_window(
+		curr_delv_bytes = (int64_t)search_compute_delv_window(
 			ccv,
 			nreno->search_curr_idx - SEARCH_WIN_BINS,
-			nreno->search_curr_idx,
-			0,
-			SEARCH_WIN_ACKED);
+			nreno->search_curr_idx);
 
 		fraction = ((rtt_us % nreno->search_bin_duration_us) * 100 / nreno -> search_bin_duration_us);
 

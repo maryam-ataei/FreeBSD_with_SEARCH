@@ -47,18 +47,12 @@ typedef uint32_t search_bin_t;
 #define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)
 #define SEARCH_THRESH 35
 #define SEARCH_ALPHA MAX_US_INT
-#define IDX_WRAP(i, N) ((((int)(i) % (int)(N)) + (int)(N)) % (int)(N))	/* Safe index wrapper */
 
 enum unset_bin_duration {
 	RESET_BIN_DURATION_TRUE,	// Reset bin duration
 	RESET_BIN_DURATION_FALSE	// Do not reset bin duration
 };
 
-enum search_win_type {
-    SEARCH_WIN_ACKED = 0,	// Calculate window of acked bytes
-    SEARCH_WIN_SENT  = 1,	// Calculate window of sent bytes
-};
- 
 /* SEARCH_end */
  
 struct newreno {
@@ -96,8 +90,8 @@ struct newreno {
 #undef  SEARCH_ACKED_BIN
 #undef  SEARCH_SENT_BIN
 
-#define SEARCH_ACKED_BIN(ccv, i) (((struct newreno*)(ccv)->cc_data)->search_acked_bin[IDX_WRAP((i), SEARCH_ACKED_BINS)])
-#define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[IDX_WRAP((i), SEARCH_SENT_BINS)])
+#define SEARCH_ACKED_BIN(ccv, i) (((struct newreno*)(ccv)->cc_data)->search_acked_bin[(i)% SEARCH_ACKED_BINS])
+#define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[(i) % SEARCH_SENT_BINS])
 /* SEARCH_end */
 
 struct cc_newreno_opts {
