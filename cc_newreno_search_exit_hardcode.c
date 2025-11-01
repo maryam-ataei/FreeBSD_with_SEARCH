@@ -1054,20 +1054,20 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
         				incr = 0;	/* freeze cwnd increase upon exit detection */
     				}
 
-    				if (now_us - nreno->start_time >= 700000 && nreno->found_exit == 0) {
+    				if (now_us - nreno->start_time >= 900000 && nreno->found_exit == 0) {
 
-    				CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
+    					search_exit_slow_start(ccv, now_us, rtt_us);
 
-    				nreno->found_exit = 1;
+    					nreno->found_exit = 1;
 
-					search_reset(nreno, RESET_BIN_DURATION_TRUE);
+						search_reset(nreno, RESET_BIN_DURATION_TRUE);
 
-					SEARCH_LOG(" SEARCH_INFO: [now %lu]"
-					 	" [exit by hardcoded value [cwnd %u] [ssthresh %u]\n", 
-							now_us, 
-							CCV(ccv, snd_cwnd), 
-							CCV(ccv, snd_ssthresh));
-    				}
+						SEARCH_LOG(" SEARCH_INFO: [now %lu]"
+						 	" [exit by hardcoded value [cwnd %u] [ssthresh %u]\n", 
+								now_us, 
+								CCV(ccv, snd_cwnd), 
+								CCV(ccv, snd_ssthresh));
+	    			}
 
 			 	}
 			 	/* SEARCH_end */
