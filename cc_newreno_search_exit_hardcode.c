@@ -656,13 +656,11 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	if (V_CWND_ROLLBACK) {
 
 		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
-		cong_idx = nreno->search_curr_idx - ((2 * initial_rtt) / nreno->search_bin_duration_us);
+		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
 		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
 		overshoot_bytes = (int64_t)search_compute_window(ccv, cong_idx, nreno->search_curr_idx, 0, SEARCH_WIN_ACKED);
 
-		/* Calculate the rollback congestion window based on overshoot divided by MSS */
-		overshoot_cwnd = overshoot_bytes / CCV(ccv, t_maxseg); //Q: mss is tcp_fixed_maxseg(ccv->ccvc.tcp) or CCV(ccv, t_maxseg)
 		/*
 		* Reduce the current congestion window,
 		* but guard so it doesn't drop below the initial cwnd
