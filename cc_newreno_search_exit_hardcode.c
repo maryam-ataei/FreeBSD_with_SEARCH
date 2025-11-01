@@ -630,8 +630,7 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	struct newreno* nreno = ccv->cc_data;
 
 	int32_t cong_idx = 0;
-	uint32_t initial_rtt = 0;
-	uint64_t overshoot_bytes = 0;
+	// uint32_t initial_rtt = 0;
 	uint32_t overshoot_cwnd = 0;
 
 	/*
@@ -655,11 +654,11 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	if (V_CWND_ROLLBACK) {
 
-		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
+		// initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
 		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
-		overshoot_bytes = (int64_t)search_compute_window(ccv, cong_idx, nreno->search_curr_idx, 0, SEARCH_WIN_ACKED);
+		overshoot_cwnd = (int64_t)search_compute_window(ccv, cong_idx, nreno->search_curr_idx, 0, SEARCH_WIN_ACKED);
 
 		/*
 		* Reduce the current congestion window,
