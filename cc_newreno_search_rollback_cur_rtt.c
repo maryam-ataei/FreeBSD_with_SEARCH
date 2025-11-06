@@ -877,7 +877,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 
 	uint32_t inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
-	uint32_t rwnd = CCV(ccv, snd_wnd);
+	uint32_t rwnd = CCV(ccv, rcv_wnd);
 
 	SEARCH_LOG("[SEARCH][STATE] [cwnd %u] [inflight %u] [rwnd %u] [cwnd_limited %d]\n",
            cwnd, inflight, rwnd, (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0);
