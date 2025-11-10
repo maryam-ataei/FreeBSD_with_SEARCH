@@ -364,15 +364,16 @@ cc_ack_received(struct tcpcb *tp, struct tcphdr *th, uint16_t nsegs,
 	if (CC_ALGO(tp)->ack_received != NULL) {
 		/* XXXLAS: Find a way to live without this */
 		tp->t_ccv.curack = th->th_ack;
-		// MA_DEBUGGING_LOG
-		log(LOG_INFO, "[CCRG][cc_ack_received] will call algo ack_received: ack=%u type=%u\n",
-               tp->t_ccv.curack, type);
+		// // MA_DEBUGGING_LOG
+		// log(LOG_INFO, "[CCRG][cc_ack_received] will call algo ack_received: ack=%u type=%u\n",
+        //        tp->t_ccv.curack, type);
 
 		CC_ALGO(tp)->ack_received(&tp->t_ccv, type);
-	} else {
-		// MA_DEBUGGING_LOG
-		log(LOG_INFO, "[CCRG][cc_ack_received] SKIPPED algo call (ack_received==NULL)\n");
-	}
+	} 
+	// else {
+	// 	// MA_DEBUGGING_LOG
+	// 	log(LOG_INFO, "[CCRG][cc_ack_received] SKIPPED algo call (ack_received==NULL)\n");
+	// }
 #ifdef STATS
 	stats_voi_update_abs_ulong(tp->t_stats, VOI_TCP_LCWIN, tp->snd_cwnd);
 #endif
@@ -1776,19 +1777,19 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 	 * be TH_NEEDSYN.
 	 */
 
-	// MA_DEBUGGING_LOG
-	log(LOG_INFO,
-	    "[CCRG][tcp_do_segment][hdrpred-check] state=%d seq=%u rcv_nxt=%u flags=0x%x snd_nxt=%u snd_max=%u "
-	    "tiwin=%u\n",
-	    tp->t_state, th->th_seq, tp->rcv_nxt, thflags,
-	    tp->snd_nxt, tp->snd_max, tiwin);
+	// // MA_DEBUGGING_LOG
+	// log(LOG_INFO,
+	//     "[CCRG][tcp_do_segment][hdrpred-check] state=%d seq=%u rcv_nxt=%u flags=0x%x snd_nxt=%u snd_max=%u "
+	//     "tiwin=%u\n",
+	//     tp->t_state, th->th_seq, tp->rcv_nxt, thflags,
+	//     tp->snd_nxt, tp->snd_max, tiwin);
 
-	log(LOG_INFO,
-	    "[CCRG][tcp_do_segment][hdrpred-check]"
-	    "snd_wnd=%u needSyn=%d needFin=%d segq_empty=%d ts_ok=%d tsval=%u ts_recent=%u\n",
-	     tp->snd_wnd,
-	    (tp->t_flags & TF_NEEDSYN) != 0, (tp->t_flags & TF_NEEDFIN) != 0,
-	    SEGQ_EMPTY(tp), (to.to_flags & TOF_TS) != 0, to.to_tsval, tp->ts_recent);
+	// log(LOG_INFO,
+	//     "[CCRG][tcp_do_segment][hdrpred-check]"
+	//     "snd_wnd=%u needSyn=%d needFin=%d segq_empty=%d ts_ok=%d tsval=%u ts_recent=%u\n",
+	//      tp->snd_wnd,
+	//     (tp->t_flags & TF_NEEDSYN) != 0, (tp->t_flags & TF_NEEDFIN) != 0,
+	//     SEGQ_EMPTY(tp), (to.to_flags & TOF_TS) != 0, to.to_tsval, tp->ts_recent);
 
 
 	if (tp->t_state == TCPS_ESTABLISHED &&
@@ -1800,9 +1801,9 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 	    SEGQ_EMPTY(tp) &&
 	    ((to.to_flags & TOF_TS) == 0 ||
 	     TSTMP_GEQ(to.to_tsval, tp->ts_recent)) ) {
-		// MA_DEBUGGING_LOG
-		log(LOG_INFO, "[CCRG][tcp_do_segment][hdrpred] FAST path taken: seq=%u ack=%u len=%d\n",
-    		th->th_seq, th->th_ack, tlen);
+		// // MA_DEBUGGING_LOG
+		// log(LOG_INFO, "[CCRG][tcp_do_segment][hdrpred] FAST path taken: seq=%u ack=%u len=%d\n",
+    	// 	th->th_seq, th->th_ack, tlen);
 
 		/*
 		 * If last ACK falls within this segment's sequence numbers,
@@ -1838,10 +1839,10 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 				      TSTMP_LT(to.to_tsecr, tp->t_badrxtwin)) ||
 				     ((to.to_flags & TOF_TS) == 0 &&
 				      TSTMP_LT(ticks, tp->t_badrxtwin)))){
-					// MA_DEBUGGING_LOG
-					log(LOG_INFO,
-					    "[CCRG][tcp_do_segment][cc_cong_signal] type=%d ack=%u una=%u max=%u state=%d flags=0x%x\n",
-					    CC_RTO, th->th_ack, tp->snd_una, tp->snd_max, tp->t_state, tp->t_flags);
+					// // MA_DEBUGGING_LOG
+					// log(LOG_INFO,
+					//     "[CCRG][tcp_do_segment][cc_cong_signal] type=%d ack=%u una=%u max=%u state=%d flags=0x%x\n",
+					//     CC_RTO, th->th_ack, tp->snd_una, tp->snd_max, tp->t_state, tp->t_flags);
 					cc_cong_signal(tp, th, CC_RTO_ERR);
 				}
 
@@ -1890,10 +1891,10 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 				 * typically means increasing the congestion
 				 * window.
 				 */
-				// MA_DEBUGGING_LOG
-				log(LOG_INFO,
-				    "[CCRG][tcp_do_segment][hdrpred-pure-ACK] calling cc_ack_received: ack=%u una=%u max=%u cwnd=%u state=%d\n",
-				    th->th_ack, tp->snd_una, tp->snd_max, tp->snd_cwnd, tp->t_state);
+				// // MA_DEBUGGING_LOG
+				// log(LOG_INFO,
+				//     "[CCRG][tcp_do_segment][hdrpred-pure-ACK] calling cc_ack_received: ack=%u una=%u max=%u cwnd=%u state=%d\n",
+				//     th->th_ack, tp->snd_una, tp->snd_max, tp->snd_cwnd, tp->t_state);
 
 				cc_ack_received(tp, th, nsegs, CC_ACK);
 
@@ -1942,14 +1943,14 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 					(void) tcp_output(tp);
 				goto check_delack;
 			}
-			// MA_DEBUGGING_LOG
-			else {
-			    log(LOG_INFO,
-			        "[CCRG][tcp_do_segment][hdrpred-pure-ACK] skipped CC call: ack=%u una=%u max=%u sack=%d in_recovery=%d holes_empty=%d\n",
-			        th->th_ack, tp->snd_una, tp->snd_max,
-			        (to.to_flags & TOF_SACK) != 0,
-			        IN_RECOVERY(tp->t_flags),
-			        TAILQ_EMPTY(&tp->snd_holes));
+			// // MA_DEBUGGING_LOG
+			// else {
+			//     log(LOG_INFO,
+			//         "[CCRG][tcp_do_segment][hdrpred-pure-ACK] skipped CC call: ack=%u una=%u max=%u sack=%d in_recovery=%d holes_empty=%d\n",
+			//         th->th_ack, tp->snd_una, tp->snd_max,
+			//         (to.to_flags & TOF_SACK) != 0,
+			//         IN_RECOVERY(tp->t_flags),
+			//         TAILQ_EMPTY(&tp->snd_holes));
 			}
 
 		} else if (th->th_ack == tp->snd_una &&
@@ -2019,17 +2020,17 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 			goto check_delack;
 		}
 	}
-	// MA_DEBUGGING_LOG
-	else {
-	    log(LOG_INFO,
-	        "[CCRG][tcp_do_segment][hdrpred] FAST path skipped: seq=%u ack=%u flags=0x%x state=%d\n",
-	        th->th_seq, th->th_ack, thflags, tp->t_state);
-	}
+	// // MA_DEBUGGING_LOG
+	// else {
+	//     log(LOG_INFO,
+	//         "[CCRG][tcp_do_segment][hdrpred] FAST path skipped: seq=%u ack=%u flags=0x%x state=%d\n",
+	//         th->th_seq, th->th_ack, thflags, tp->t_state);
+	// }
 
-	// MA_DEBUGGING_LOG
-	log(LOG_INFO,
-	    "[CCRG][tcp_do_segment][slowpath] entered: ack=%u seq=%u flags=0x%x state=%d\n",
-	    th->th_ack, th->th_seq, thflags, tp->t_state);
+	// // MA_DEBUGGING_LOG
+	// log(LOG_INFO,
+	//     "[CCRG][tcp_do_segment][slowpath] entered: ack=%u seq=%u flags=0x%x state=%d\n",
+	//     th->th_ack, th->th_seq, thflags, tp->t_state);
 	/*
 	 * Calculate amount of space in receive window,
 	 * and then do TCP input processing.
@@ -2783,10 +2784,10 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 					tp->t_dupacks = 0;
 				else if (++tp->t_dupacks > tcprexmtthresh ||
 				     IN_FASTRECOVERY(tp->t_flags)) {
-					// MA_DEBUGGING_LOG
-					log(LOG_INFO,
-					    "[CCRG][tcp_do_segment][dupACK] calling cc_ack_received(CC_DUPACK): dupacks=%d ack=%u una=%u nxt=%u max=%u ssthresh=%u state=%d\n",
-					    tp->t_dupacks, th->th_ack, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->snd_ssthresh, tp->t_state);
+					// // MA_DEBUGGING_LOG
+					// log(LOG_INFO,
+					//     "[CCRG][tcp_do_segment][dupACK] calling cc_ack_received(CC_DUPACK): dupacks=%d ack=%u una=%u nxt=%u max=%u ssthresh=%u state=%d\n",
+					//     tp->t_dupacks, th->th_ack, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->snd_ssthresh, tp->t_state);
 
 					cc_ack_received(tp, th, nsegs,
 					    CC_DUPACK);
@@ -2858,10 +2859,10 @@ enter_recovery:
 					}
 					/* Congestion signal before ack. */
 					cc_cong_signal(tp, th, CC_NDUPACK);
-					// MA_DEBUGGING_LOG
-					log(LOG_INFO,
-					    "[CCRG][tcp_do_segment][dupACK] calling cc_ack_received(CC_DUPACK): dupacks=%d ack=%u una=%u nxt=%u max=%u ssthresh=%u state=%d\n",
-					    tp->t_dupacks, th->th_ack, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->snd_ssthresh, tp->t_state);
+					// // MA_DEBUGGING_LOG
+					// log(LOG_INFO,
+					//     "[CCRG][tcp_do_segment][dupACK] calling cc_ack_received(CC_DUPACK): dupacks=%d ack=%u una=%u nxt=%u max=%u ssthresh=%u state=%d\n",
+					//     tp->t_dupacks, th->th_ack, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->snd_ssthresh, tp->t_state);
 
 					cc_ack_received(tp, th, nsegs,
 					    CC_DUPACK);
@@ -2923,10 +2924,10 @@ enter_recovery:
 					 * segment. Restore the original
 					 * snd_cwnd after packet transmission.
 					 */
-					// MA_DEBUGGING_LOG
-					log(LOG_INFO,
-					    "[CCRG][tcp_do_segment][dupACK] calling cc_ack_received(CC_DUPACK): dupacks=%d ack=%u una=%u nxt=%u max=%u ssthresh=%u state=%d\n",
-					    tp->t_dupacks, th->th_ack, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->snd_ssthresh, tp->t_state);
+					// // MA_DEBUGGING_LOG
+					// log(LOG_INFO,
+					//     "[CCRG][tcp_do_segment][dupACK] calling cc_ack_received(CC_DUPACK): dupacks=%d ack=%u una=%u nxt=%u max=%u ssthresh=%u state=%d\n",
+					//     tp->t_dupacks, th->th_ack, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->snd_ssthresh, tp->t_state);
 
 					cc_ack_received(tp, th, nsegs,
 					    CC_DUPACK);
@@ -3103,10 +3104,10 @@ process_ACK:
 		    to.to_flags & TOF_TS &&
 		    to.to_tsecr != 0 &&
 		    TSTMP_LT(to.to_tsecr, tp->t_badrxtwin)){
-			// MA_DEBUGGING_LOG
-			log(LOG_INFO,
-			    "[CCRG][tcp_do_segment][cc_cong_signal] type=%d ack=%u una=%u max=%u state=%d flags=0x%x\n",
-			    CC_RTO, th->th_ack, tp->snd_una, tp->snd_max, tp->t_state, tp->t_flags);
+			// // MA_DEBUGGING_LOG
+			// log(LOG_INFO,
+			//     "[CCRG][tcp_do_segment][cc_cong_signal] type=%d ack=%u una=%u max=%u state=%d flags=0x%x\n",
+			//     CC_RTO, th->th_ack, tp->snd_una, tp->snd_max, tp->t_state, tp->t_flags);
 		    cc_cong_signal(tp, th, CC_RTO_ERR);
 		   }
 
