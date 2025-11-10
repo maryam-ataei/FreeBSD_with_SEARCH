@@ -1086,7 +1086,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 	}
 
 	ACK_LOG("ACK_FUNC_INFO: [now %lu] "
-		"[ertt %lu] [srtt %lu] [usec_rtt %u] [cwnd_B %u] [ssthresh %u]n", 
+		"[ertt %lu] [srtt %lu] [usec_rtt %u] [cwnd_B %u] [ssthresh %u]\n", 
 		now_us, 
 		get_ertt_us(ccv),
 		get_srtt_us(ccv),
