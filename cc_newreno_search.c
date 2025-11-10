@@ -98,13 +98,15 @@
  * Provides controlled logging for the SEARCH module.
  * - SEARCH_LOG():  informational logs for SEARCH behavior.
  * - DEBUG_LOG():   logs for development and fine-grained tracing.
+ * - ACK_LOG():		informational logs for each ack.
  *
  * To enable/disable logging, define or undefine SEARCH_LOG_ENABLED
  * and DEBUG_LOG_ENABLED. Both macros automatically prepend the
  * flow pointer for easy per-connection tracing.
  */
-#define SEARCH_LOG_ENABLED
-#define DEBUG_LOG_ENABLED
+//#define SEARCH_LOG_ENABLED
+//#define DEBUG_LOG_ENABLED
+#define ACK_LOG_ENABLED
 
 #ifdef SEARCH_LOG_ENABLED
 #define SEARCH_LOG(fmt, ...) \
@@ -121,6 +123,15 @@
 #else
 #define DEBUG_LOG(fmt, ...) do {} while (0)
 #endif
+
+#ifdef ACK_LOG_ENABLED
+#define ACK_LOG(fmt, ...) \
+    log(LOG_INFO, "[CCRG][ACK][flow_pointer: %p] " fmt, \
+        ccv, ##__VA_ARGS__)
+#else
+#define ACK_LOG(fmt, ...) do {} while (0)
+#endif
+
 /* SEARCH_end */
 
 static void		newreno_cb_destroy(struct cc_var *ccv);
@@ -628,11 +639,10 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	struct newreno* nreno = ccv->cc_data;
 
 	int32_t cong_idx = 0;
-	uint32_t initial_rtt = 0;
 	uint32_t overshoot_cwnd = 0;
 
 	/*
-	* If cwnd rollback is enabled, the code calculates the initial round-trip time (RTT)
+	* If cwnd rollback is enabled, the code calculates the current round-trip time (RTT)
 	* and determines the congestion index (`cong_idx`) from which to compute the overshoot.
 	* The overshoot represents the excess bytes delivered beyond the estimated target,
 	* which is calculated over a window defined by the current and the rollback indices.
@@ -652,29 +662,33 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	if (V_CWND_ROLLBACK) {
 
-		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
-		cong_idx = nreno->search_curr_idx - ((2 * initial_rtt) / nreno->search_bin_duration_us);
+		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
-		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
-		overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
+		if (nreno->search_curr_idx - cong_idx <= 39){
 
-		// SEARCH_LOG(" SEARCH_INFO: [now %lu]"
-		//  	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [cong_idx %u] [updated_cwnd %u]\n", 
-		// 		now_us, 
-		// 		CCV(ccv, snd_cwnd), 
-		// 		overshoot_cwnd,
-		// 		cong_idx,
-		// 		max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+			/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
+			overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
 
-		/*
-		* Reduce the current congestion window,
-		* but guard so it doesn't drop below the initial cwnd
-		* or is not larger than the current cwnd (in case of TCP reset)
-		*/
-		if (overshoot_cwnd < CCV(ccv, snd_cwnd))
-			CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments);
+			// SEARCH_LOG(" SEARCH_INFO: [now %lu]"
+			//  	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [cong_idx %u] [updated_cwnd %u]\n", 
+			// 		now_us, 
+			// 		CCV(ccv, snd_cwnd), 
+			// 		overshoot_cwnd,
+			// 		cong_idx,
+			// 		max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+
+			/*
+			* Reduce the current congestion window,
+			* but guard so it doesn't drop below the initial cwnd
+			* or is not larger than the current cwnd (in case of TCP reset)
+			*/
+			if (overshoot_cwnd < CCV(ccv, snd_cwnd))
+				CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments);
+			else 
+				CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
+		}
 		else 
-			CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
+			DEBUG_LOG("DEBUG: [now %lu] cong_idx is too small for rollback [cong_idx %u] \n", now_us, cong_idx); 
 	}
 
 	CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
@@ -703,7 +717,7 @@ search_log_exit_rate(struct cc_var *ccv,
                     uint64_t now_us,
                     uint64_t rtt_us)
 {
-
+	#if defined(SEARCH_LOG_ENABLED)
 	uint64_t delta_acked_bytes_for_rtt = 0;
 	uint64_t delta_sent_bytes_for_rtt = 0;
 	uint64_t b_acked_per_sec_per_rtt = 0;
@@ -731,6 +745,7 @@ search_log_exit_rate(struct cc_var *ccv,
 	    rtt_us,
 	    b_sent_per_sec_per_rtt,
 	    b_acked_per_sec_per_rtt);
+	#endif
 }
 
 /*
@@ -871,10 +886,12 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 	// Update cumulative delivered bytes for SEARCH analysis
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 	/* SEARCH_end */
-
+	
+	#if defined(SEARCH_LOG_ENABLED)
 	uint32_t inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
+	#endif
 
 	SEARCH_LOG("[SEARCH][STATE] [cwnd %u] [inflight %u] [rwnd %u] [cwnd_limited %d]\n",
            cwnd, inflight, rwnd, (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0);
@@ -1068,21 +1085,25 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 
 	}
 
-	SEARCH_LOG("ACK_FUNC_INFO: [now %lu] "
-		"[ertt %lu] [srtt %lu] [usec_rtt %u] [cwnd_B %u] [ssthresh %u] [mss %u] [curack %u] "
-		"[cur_bytes_ack %u] [total_bytes_acked %u] [total_bytes_sent %lu]\n", 
+	ACK_LOG("ACK_FUNC_INFO: [now %lu] "
+		"[ertt %lu] [srtt %lu] [usec_rtt %u] [cwnd_B %u] [ssthresh %u]n", 
 		now_us, 
 		get_ertt_us(ccv),
 		get_srtt_us(ccv),
 		nreno->last_rtt_sample,
 		CCV(ccv, snd_cwnd),
 		CCV(ccv, snd_ssthresh),
+		);
+
+	ACK_LOG("ACK_FUNC_INFO: [mss %u] [curack %u] "
+		"[cur_bytes_ack %u] [total_bytes_acked %u] [total_bytes_sent %lu]\n", 
 		CCV(ccv, t_maxseg),
 		ccv->curack,
 		ccv->bytes_this_ack,
 		nreno->search_cumulative_acked_bytes,
 		CCV(ccv, t_sndbytes)
 		);
+
 	/* SEARCH_end */
 }
 
