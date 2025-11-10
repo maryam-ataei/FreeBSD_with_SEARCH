@@ -1092,7 +1092,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type) {
 		get_srtt_us(ccv),
 		nreno->last_rtt_sample,
 		CCV(ccv, snd_cwnd),
-		CCV(ccv, snd_ssthresh),
+		CCV(ccv, snd_ssthresh)
 		);
 
 	ACK_LOG("ACK_FUNC_INFO: [mss %u] [curack %u] "
