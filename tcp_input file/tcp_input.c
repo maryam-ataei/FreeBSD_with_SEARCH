@@ -303,6 +303,7 @@ cc_ack_received(struct tcpcb *tp, struct tcphdr *th, uint16_t nsegs,
 #ifdef STATS
 	int32_t gput;
 #endif
+	
 	// MA_DEBUGGING_LOG
 	log(LOG_INFO, "[CCRG][cc_ack_received] called: ack=%u type=%u cwnd=%u una=%u nxt=%u max=%u state=%d\n",
            th->th_ack, type, tp->snd_cwnd, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->t_state);
@@ -1951,7 +1952,7 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 			//         (to.to_flags & TOF_SACK) != 0,
 			//         IN_RECOVERY(tp->t_flags),
 			//         TAILQ_EMPTY(&tp->snd_holes));
-			}
+			// }
 
 		} else if (th->th_ack == tp->snd_una &&
 		    tlen <= sbspace(&so->so_rcv)) {
