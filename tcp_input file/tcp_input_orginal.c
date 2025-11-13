@@ -303,11 +303,6 @@ cc_ack_received(struct tcpcb *tp, struct tcphdr *th, uint16_t nsegs,
 #ifdef STATS
 	int32_t gput;
 #endif
-	
-	// MA_DEBUGGING_LOG
-	log(LOG_INFO, "[CCRG][cc_ack_received] called: ack=%u type=%u cwnd=%u una=%u nxt=%u max=%u state=%d\n",
-           th->th_ack, type, tp->snd_cwnd, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->t_state);
-
 
 	INP_WLOCK_ASSERT(tptoinpcb(tp));
 
@@ -718,10 +713,6 @@ tcp_input_with_port(struct mbuf **mp, int *offp, int proto, uint16_t port)
 		ip = mtod(m, struct ip *);
 		th = (struct tcphdr *)((caddr_t)ip + off0);
 		tlen = ntohs(ip->ip_len) - off0;
-
-		// MA_DEBUGGING_LOG
-		log(LOG_INFO, "[CCRG][tcp_input_with_port] called: ack=%u\n",
-           th->th_ack);
 
 		iptos = ip->ip_tos;
 		if (port)
@@ -1170,11 +1161,6 @@ tfo_socket_result:
 			 * the mbuf chain and unlocks the inpcb.
 			 */
 			TCP_PROBE5(receive, NULL, tp, m, tp, th);
-
-			// MA_DEBUGGING_LOG
-			log(LOG_INFO, "[CCRG][in tcp_input_with_port called tfb_tcp_do_segment1] called: ack=%u cwnd=%u una=%u nxt=%u max=%u state=%d\n",
-		           th->th_ack, tp->snd_cwnd, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->t_state);
-
 			tp->t_fb->tfb_tcp_do_segment(tp, m, th, drop_hdrlen,
 			    tlen, iptos);
 			return (IPPROTO_DONE);
@@ -1412,10 +1398,6 @@ tfo_socket_result:
 	if ((lookupflag & INPLOOKUP_RLOCKPCB) && INP_TRY_UPGRADE(inp) == 0)
 		goto dropunlock;
 
-	// MA_DEBUGGING_LOG
-	log(LOG_INFO, "[CCRG][in tcp_input_with_port called tfb_tcp_do_segment2] called: ack=%u cwnd=%u una=%u nxt=%u max=%u state=%d\n",
-           th->th_ack, tp->snd_cwnd, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->t_state);
-
 	tp->t_fb->tfb_tcp_do_segment(tp, m, th, drop_hdrlen, tlen, iptos);
 	return (IPPROTO_DONE);
 
@@ -1523,9 +1505,6 @@ tcp_autorcvbuf(struct mbuf *m, struct tcphdr *th, struct socket *so,
 int
 tcp_input(struct mbuf **mp, int *offp, int proto)
 {
-	// MA_DEBUGGING_LOG
-	log(LOG_INFO, "[CCRG][tcp_input] called\n");
-
 	return(tcp_input_with_port(mp, offp, proto, 0));
 }
 
@@ -1548,10 +1527,6 @@ void
 tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
     int drop_hdrlen, int tlen, uint8_t iptos)
 {
-	// MA_DEBUGGING_LOG
-	log(LOG_INFO, "[CCRG][tcp_do_segment] called: ack=%u cwnd=%u una=%u nxt=%u max=%u state=%d\n",
-           th->th_ack, tp->snd_cwnd, tp->snd_una, tp->snd_nxt, tp->snd_max, tp->t_state);
-
 	uint16_t thflags;
 	int acked, ourfinisacked, needoutput = 0;
 	sackstatus_t sack_changed;
@@ -1817,6 +1792,7 @@ tcp_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 				     ((to.to_flags & TOF_TS) == 0 &&
 				      TSTMP_LT(ticks, tp->t_badrxtwin))))
 					cc_cong_signal(tp, th, CC_RTO_ERR);
+
 				/*
 				 * Recalculate the transmit timer / rtt.
 				 *
@@ -2818,9 +2794,11 @@ enter_recovery:
 						KASSERT((tp->t_dupacks == 2 &&
 						    tp->snd_limited == 0) ||
 						   (sent == maxseg + 1 &&
-						    tp->t_flags & TF_SENTFIN),
-						    ("%s: sent too much",
-						    __func__));
+						    tp->t_flags & TF_SENTFIN) ||
+						   (sent < 2 * maxseg &&
+						    tp->t_flags & TF_NODELAY),
+						    ("%s: sent too much: %u>%u",
+						    __func__, sent, maxseg));
 						tp->snd_limited = 2;
 					} else if (sent > 0)
 						++tp->snd_limited;
@@ -2952,7 +2930,8 @@ process_ACK:
 		    to.to_flags & TOF_TS &&
 		    to.to_tsecr != 0 &&
 		    TSTMP_LT(to.to_tsecr, tp->t_badrxtwin))
-		    cc_cong_signal(tp, th, CC_RTO_ERR);
+			cc_cong_signal(tp, th, CC_RTO_ERR);
+
 		/*
 		 * If we have a timestamp reply, update smoothed
 		 * round trip time.  If no timestamp is present but
