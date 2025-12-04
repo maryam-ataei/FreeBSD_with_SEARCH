@@ -91,7 +91,7 @@
 #include <netinet/tcp_hpts.h>
 /* SEARCH_end */
 
-*
+/*
  * SEARCH: Logging and debug macros
  *
  * Provides controlled logging for the SEARCH module.
