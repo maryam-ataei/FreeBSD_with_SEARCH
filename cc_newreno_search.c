@@ -787,6 +787,24 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 	/* SEARCH_end */
 
+	ACK_LOG("ACK_FUNC_INFO: [now %lu] "
+	"[srtt %lu] [usec_rtt %u] [cwnd_B %u] [ssthresh %u]\n", 
+	now_us, 
+	get_srtt_us(ccv),
+	nreno->last_rtt_sample,
+	CCV(ccv, snd_cwnd),
+	CCV(ccv, snd_ssthresh)
+	);
+
+ACK_LOG("ACK_FUNC_INFO: [mss %u] [curack %u] "
+	"[cur_bytes_ack %u] [total_bytes_acked %u] [total_bytes_sent %lu]\n", 
+	CCV(ccv, t_maxseg),
+	ccv->curack,
+	ccv->bytes_this_ack,
+	nreno->search_cumulative_acked_bytes,
+	CCV(ccv, t_sndbytes)
+	);
+
 	#if defined(SEARCH_LOG_ENABLED)
 	uint32_t inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
@@ -946,24 +964,6 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 			CCV(ccv, snd_cwnd) = min(cw + incr,
 			    TCP_MAXWIN << CCV(ccv, snd_scale));
 	}
-
-	ACK_LOG("ACK_FUNC_INFO: [now %lu] "
-		"[srtt %lu] [usec_rtt %u] [cwnd_B %u] [ssthresh %u]\n", 
-		now_us, 
-		get_srtt_us(ccv),
-		nreno->last_rtt_sample,
-		CCV(ccv, snd_cwnd),
-		CCV(ccv, snd_ssthresh)
-		);
-
-	ACK_LOG("ACK_FUNC_INFO: [mss %u] [curack %u] "
-		"[cur_bytes_ack %u] [total_bytes_acked %u] [total_bytes_sent %lu]\n", 
-		CCV(ccv, t_maxseg),
-		ccv->curack,
-		ccv->bytes_this_ack,
-		nreno->search_cumulative_acked_bytes,
-		CCV(ccv, t_sndbytes)
-		);
 }
 
 static void
