@@ -1177,7 +1177,7 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 				/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
 			 	if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
-					DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[1] [now %lu]\n", get_now_us())
+					DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[1] [now %lu]\n", get_now_us());
 			 	}
 			} else {
 				if (V_use_hystartpp){
