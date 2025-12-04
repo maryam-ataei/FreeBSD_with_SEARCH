@@ -188,6 +188,29 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 		nreno->search_bin_duration_us = 0;
 }
 
+/*
+ * SEARCH: Get current time in microseconds.
+ *
+ * Wrapper around tcp_get_usecs() that returns a 64-bit timestamp.
+ * Prevents overflow caused by 32-bit microsecond counters by
+ * combining seconds and microseconds explicitly.
+ */
+static inline uint64_t
+get_now_us(void)
+{
+    struct timeval tv;
+    tcp_get_usecs(&tv);
+    /* 
+    * NOTE: Be careful with overflow here!
+    * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
+    * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
+    * jumping from ~4,294,966,xxx back to a small number.
+    * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
+    */
+    return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
+}
+/* SEARCH_end */
+
 static void
 newreno_log_hystart_event(struct cc_var *ccv, struct newreno *nreno, uint8_t mod, uint32_t flex1)
 {
@@ -298,28 +321,6 @@ newreno_cb_destroy(struct cc_var *ccv)
 }
 
 /* SEARCH_begin */
-/*
- * SEARCH: Get current time in microseconds.
- *
- * Wrapper around tcp_get_usecs() that returns a 64-bit timestamp.
- * Prevents overflow caused by 32-bit microsecond counters by
- * combining seconds and microseconds explicitly.
- */
-static inline uint64_t
-get_now_us(void)
-{
-    struct timeval tv;
-    tcp_get_usecs(&tv);
-    /* 
-    * NOTE: Be careful with overflow here!
-    * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
-    * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
-    * jumping from ~4,294,966,xxx back to a small number.
-    * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
-    */
-    return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
-}
-
 /*
  * SEARCH: Retrieve smoothed RTT (srtt) in microseconds.
  *
