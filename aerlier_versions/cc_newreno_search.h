@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
+*/
 
 #ifndef _CC_NEWRENO_H
 #define _CC_NEWRENO_H
@@ -30,29 +30,31 @@
 /* SEARCH_begin */
 #define CCALGONAME_NEWRENO "newreno_search"
  
-typedef uint16_t search_bin_t;
-#define MAX_US_INT 0xffff	//16bit	0xffff   32bit	0xffffffff
-
+#define MAX_US_INT  0xffffffff  //16bit	0xffff   32bit	0xffffffff
+ 
+typedef uint32_t search_bin_t;
+ 
 #define V_use_search 1
 #define V_use_hystartpp 0
 
 #define V_CWND_ROLLBACK 1
+ 
 #define SEARCH_WINDOW_SIZE_FACTOR 35
 #define SEARCH_WIN_BINS 10
-#define SEARCH_EXTRA_ACKED_BINS 30
-#define SEARCH_EXTRA_SENT_BINS 35
+#define SEARCH_EXTRA_ACKED_BINS 1
+#define SEARCH_EXTRA_SENT_BINS 15
 #define SEARCH_ACKED_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_ACKED_BINS)
 #define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)
 #define SEARCH_THRESH 35
 #define SEARCH_ALPHA MAX_US_INT
 
 enum unset_bin_duration {
-	RESET_BIN_DURATION_TRUE,		// Reset bin duration
-	RESET_BIN_DURATION_FALSE		// Do not reset bin duration
+	RESET_BIN_DURATION_TRUE,	// Reset bin duration
+	RESET_BIN_DURATION_FALSE	// Do not reset bin duration
 };
- 
-/* SEARCH_end */
 
+/* SEARCH_end */
+ 
 struct newreno {
 	uint32_t beta;
 	uint32_t beta_ecn;
@@ -66,8 +68,15 @@ struct newreno {
 	uint32_t css_fas_at_css_entry;
 	uint32_t css_lowrtt_fas;
 	uint32_t css_last_fas;
- 
 	/* SEARCH_begin */
+	/*
+	 * SEARCH: Data tracking extensions for congestion estimation.
+	 *
+	 * These fields are used to monitor both delivered and sent bytes
+	 * over sliding bins (ACKED and SENT) during the slow-start phase.
+	 * The mechanism estimates congestion based on delivery progression
+	 * rather than solely on exponential cwnd growth.
+	 */
 	uint32_t last_rtt_sample;					/* Most recent RTT sample (in microseconds) from rttsample() */
 	uint32_t search_bin_duration_us;			/* duration of each bin in microsecond */
 	int32_t  search_curr_idx;					/* total number of bins */
@@ -89,12 +98,12 @@ struct cc_newreno_opts {
 	int		name;
 	uint32_t	val;
 };
-
+ 
 #define CC_NEWRENO_BETA			1	/* Beta for normal DUP-ACK/Sack recovery */
 #define CC_NEWRENO_BETA_ECN		2	/* ECN Beta for Abe */
-
+ 
 /* Flags values */
-#define CC_NEWRENO_HYSTART_ENABLED	0x0002	/* We can do hystart, a loss removes this flag */
-#define CC_NEWRENO_HYSTART_IN_CSS	0x0004	/* If we enter hystart CSS this flag is set */
-#define CC_NEWRENO_BETA_ECN_ENABLED	0x0020
+#define CC_NEWRENO_HYSTART_ENABLED		0x0002	/* We can do hystart, a loss removes this flag */
+#define CC_NEWRENO_HYSTART_IN_CSS		0x0004	/* If we enter hystart CSS this flag is set */
+#define CC_NEWRENO_BETA_ECN_ENABLED 	0x0020
 #endif /* _CC_NEWRENO_H */

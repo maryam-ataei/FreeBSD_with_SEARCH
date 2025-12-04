@@ -1,59 +1,61 @@
+// Use Sent byte and delivered byte for doing SEARCH
+
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
- * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1994, 1995
- *	The Regents of the University of California.
- * Copyright (c) 2007-2008,2010,2014
- *	Swinburne University of Technology, Melbourne, Australia.
- * Copyright (c) 2009-2010 Lawrence Stewart <lstewart@freebsd.org>
- * Copyright (c) 2010 The FreeBSD Foundation
- * All rights reserved.
- *
- * This software was developed at the Centre for Advanced Internet
- * Architectures, Swinburne University of Technology, by Lawrence Stewart, James
- * Healy and David Hayes, made possible in part by a grant from the Cisco
- * University Research Program Fund at Community Foundation Silicon Valley.
- *
- * Portions of this software were developed at the Centre for Advanced
- * Internet Architectures, Swinburne University of Technology, Melbourne,
- * Australia by David Hayes under sponsorship from the FreeBSD Foundation.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
+* SPDX-License-Identifier: BSD-2-Clause
+*
+* Copyright (c) 1982, 1986, 1988, 1990, 1993, 1994, 1995
+*	The Regents of the University of California.
+* Copyright (c) 2007-2008,2010,2014
+*	Swinburne University of Technology, Melbourne, Australia.
+* Copyright (c) 2009-2010 Lawrence Stewart <lstewart@freebsd.org>
+* Copyright (c) 2010 The FreeBSD Foundation
+* All rights reserved.
+*
+* This software was developed at the Centre for Advanced Internet
+* Architectures, Swinburne University of Technology, by Lawrence Stewart, James
+* Healy and David Hayes, made possible in part by a grant from the Cisco
+* University Research Program Fund at Community Foundation Silicon Valley.
+*
+* Portions of this software were developed at the Centre for Advanced
+* Internet Architectures, Swinburne University of Technology, Melbourne,
+* Australia by David Hayes under sponsorship from the FreeBSD Foundation.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions
+* are met:
+* 1. Redistributions of source code must retain the above copyright
+*    notice, this list of conditions and the following disclaimer.
+* 2. Redistributions in binary form must reproduce the above copyright
+*    notice, this list of conditions and the following disclaimer in the
+*    documentation and/or other materials provided with the distribution.
+*
+* THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+*/
 
 /*
- * This software was first released in 2007 by James Healy and Lawrence Stewart
- * whilst working on the NewTCP research project at Swinburne University of
- * Technology's Centre for Advanced Internet Architectures, Melbourne,
- * Australia, which was made possible in part by a grant from the Cisco
- * University Research Program Fund at Community Foundation Silicon Valley.
- * More details are available at:
- *   http://caia.swin.edu.au/urp/newtcp/
- *
- * Dec 2014 garmitage@swin.edu.au
- * Borrowed code fragments from cc_cdg.c to add modifiable beta
- * via sysctls.
- *
- */
+* This software was first released in 2007 by James Healy and Lawrence Stewart
+* whilst working on the NewTCP research project at Swinburne University of
+* Technology's Centre for Advanced Internet Architectures, Melbourne,
+* Australia, which was made possible in part by a grant from the Cisco
+* University Research Program Fund at Community Foundation Silicon Valley.
+* More details are available at:
+*   http://caia.swin.edu.au/urp/newtcp/
+*
+* Dec 2014 garmitage@swin.edu.au
+* Borrowed code fragments from cc_cdg.c to add modifiable beta
+* via sysctls.
+*
+*/
 
 #include <sys/cdefs.h>
 #include <sys/param.h>
@@ -82,16 +84,15 @@
 #include <netinet/tcp_hpts.h>
 #include <netinet/cc/cc.h>
 #include <netinet/cc/cc_module.h>
-#include <sys/syslog.h>
 /* SEARCH_begin */
 #include <netinet/cc/cc_newreno_search.h>
+#include <sys/syslog.h>
 #include <sys/khelp.h>
 #include <netinet/khelp/h_ertt.h>
 #include <sys/time.h>
 #include <netinet/tcp_hpts.h>
-/* SEARCH_end */
 
-*
+/*
  * SEARCH: Logging and debug macros
  *
  * Provides controlled logging for the SEARCH module.
@@ -103,8 +104,8 @@
  * and DEBUG_LOG_ENABLED. Both macros automatically prepend the
  * flow pointer for easy per-connection tracing.
  */
-#define SEARCH_LOG_ENABLED
-#define DEBUG_LOG_ENABLED
+//#define SEARCH_LOG_ENABLED
+//#define DEBUG_LOG_ENABLED
 #define ACK_LOG_ENABLED
 
 #ifdef SEARCH_LOG_ENABLED
@@ -131,15 +132,28 @@
 #define ACK_LOG(fmt, ...) do {} while (0)
 #endif
 
-static void	newreno_cb_destroy(struct cc_var *ccv);
-static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
-static void	newreno_after_idle(struct cc_var *ccv);
-static void	newreno_cong_signal(struct cc_var *ccv, uint32_t type);
-static int newreno_ctl_output(struct cc_var *ccv, struct sockopt *sopt, void *buf);
-static void	newreno_newround(struct cc_var *ccv, uint32_t round_cnt);
-static void	newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32_t fas);
-static 	int	newreno_cb_init(struct cc_var *ccv, void *);
-static size_t	newreno_data_sz(void);
+/* SEARCH_end */
+
+static void		newreno_cb_destroy(struct cc_var *ccv);
+static void		newreno_ack_received(struct cc_var *ccv, uint16_t type);
+static void		newreno_after_idle(struct cc_var *ccv);
+static void		newreno_cong_signal(struct cc_var *ccv, uint32_t type);
+static int 		newreno_ctl_output(struct cc_var *ccv, struct sockopt *sopt, void *buf);
+static void		newreno_newround(struct cc_var *ccv, uint32_t round_cnt);
+static void		newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32_t fas);
+static int		newreno_cb_init(struct cc_var *ccv, void *);
+static size_t 	newreno_data_sz(void);
+
+/* SEARCH_begin */
+/*
+ * SEARCH: Enhanced RTT helper ID
+ *
+ * Used to retrieve the ERTT (Enhanced RTT) kernel helper context
+ * for high-resolution RTT measurements. Falls back to standard
+ * smoothed RTT (srtt) when unavailable.
+ */
+static int ertt_id = -1;
+/* SEARCH_end */
 
 
 VNET_DECLARE(uint32_t, newreno_beta);
@@ -155,20 +169,19 @@ VNET_DECLARE(uint32_t, newreno_beta_ecn);
  * Registered as "newreno_search" to the FreeBSD CC framework.
  */
 struct cc_algo newreno_search_cc_algo = {
-	.name = "newreno_search", 
+	 .name = "newreno_search",
 	/* SEARCH_end */
-	.cb_destroy = newreno_cb_destroy,
-	.ack_received = newreno_ack_received,
-	.after_idle = newreno_after_idle,
-	.cong_signal = newreno_cong_signal,
-	.post_recovery = newreno_cc_post_recovery,
-	.ctl_output = newreno_ctl_output,
-	.newround = newreno_newround,
-	.rttsample = newreno_rttsample,
-	.cb_init = newreno_cb_init,
-	.cc_data_sz = newreno_data_sz,
+	 .cb_destroy = newreno_cb_destroy,
+	 .ack_received = newreno_ack_received,
+	 .after_idle = newreno_after_idle,
+	 .cong_signal = newreno_cong_signal,
+	 .post_recovery = newreno_cc_post_recovery,
+	 .ctl_output = newreno_ctl_output,
+	 .newround = newreno_newround,
+	 .rttsample = newreno_rttsample,
+	 .cb_init = newreno_cb_init,
+	 .cc_data_sz = newreno_data_sz,
 };
- 
 
 /* SEARCH_begin */
 /*
@@ -188,24 +201,47 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 		nreno->search_bin_duration_us = 0;
 }
 
+/*
+ * SEARCH: Get current time in microseconds.
+ *
+ * Wrapper around tcp_get_usecs() that returns a 64-bit timestamp.
+ * Prevents overflow caused by 32-bit microsecond counters by
+ * combining seconds and microseconds explicitly.
+ */
+static inline uint64_t
+get_now_us(void)
+{
+    struct timeval tv;
+    tcp_get_usecs(&tv);
+    /* 
+    * NOTE: Be careful with overflow here!
+    * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
+    * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
+    * jumping from ~4,294,966,xxx back to a small number.
+    * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
+    */
+    return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
+}
+/* SEARCH_end */
+
 static void
 newreno_log_hystart_event(struct cc_var *ccv, struct newreno *nreno, uint8_t mod, uint32_t flex1)
 {
 	/*
-	 * Types of logs (mod value)
-	 * 1 - rtt_thresh in flex1, checking to see if RTT is to great.
-	 * 2 - rtt is too great, rtt_thresh in flex1.
-	 * 3 - CSS is active incr in flex1
-	 * 4 - A new round is beginning flex1 is round count
-	 * 5 - A new RTT measurement flex1 is the new measurement.
-	 * 6 - We enter CA ssthresh is also in flex1.
-	 * 7 - Socket option to change hystart executed opt.val in flex1.
-	 * 8 - Back out of CSS into SS, flex1 is the css_baseline_minrtt
-	 * 9 - We enter CA, via an ECN mark.
-	 * 10 - We enter CA, via a loss.
-	 * 11 - We have slipped out of SS into CA via cwnd growth.
-	 * 12 - After idle has re-enabled hystart++
-	 */
+	* Types of logs (mod value)
+	* 1 - rtt_thresh in flex1, checking to see if RTT is to great.
+	* 2 - rtt is too great, rtt_thresh in flex1.
+	* 3 - CSS is active incr in flex1
+	* 4 - A new round is beginning flex1 is round count
+	* 5 - A new RTT measurement flex1 is the new measurement.
+	* 6 - We enter CA ssthresh is also in flex1.
+	* 7 - Socket option to change hystart executed opt.val in flex1.
+	* 8 - Back out of CSS into SS, flex1 is the css_baseline_minrtt
+	* 9 - We enter CA, via an ECN mark.
+	* 10 - We enter CA, via a loss.
+	* 11 - We have slipped out of SS into CA via cwnd growth.
+	* 12 - After idle has re-enabled hystart++
+	*/
 	struct tcpcb *tp;
 
 	if (hystart_bblogs == 0)
@@ -232,10 +268,10 @@ newreno_log_hystart_event(struct cc_var *ccv, struct newreno *nreno, uint8_t mod
 		log.u_bbr.delivered = nreno->css_lowrtt_fas;
 		log.u_bbr.pkt_epoch = ccv->flags;
 		TCP_LOG_EVENTP(tp, NULL,
-		    &tptosocket(tp)->so_rcv,
-		    &tptosocket(tp)->so_snd,
-		    TCP_HYSTART, 0,
-		    0, &log, false, &tv);
+			&tptosocket(tp)->so_rcv,
+			&tptosocket(tp)->so_snd,
+			TCP_HYSTART, 0,
+			0, &log, false, &tv);
 	}
 }
 
@@ -248,8 +284,6 @@ newreno_data_sz(void)
 static int
 newreno_cb_init(struct cc_var *ccv, void *ptr)
 {
-	printf("This is a kernel log message\n");
-
 	struct newreno *nreno;
 
 	INP_WLOCK_ASSERT(tptoinpcb(ccv->ccvc.tcp));
@@ -264,10 +298,10 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	nreno->beta = V_newreno_beta;
 	nreno->beta_ecn = V_newreno_beta_ecn;
 	/*
-	 * We set the enabled flag so that if
-	 * the socket option gets strobed and
-	 * we have not hit a loss
-	 */
+	* We set the enabled flag so that if
+	* the socket option gets strobed and
+	* we have not hit a loss
+	*/
 	nreno->newreno_flags = CC_NEWRENO_HYSTART_ENABLED;
 	/* At init set both to infinity */
 	nreno->css_lastround_minrtt = 0xffffffff;
@@ -279,15 +313,34 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	nreno->css_fas_at_css_entry = 0;
 	nreno->css_lowrtt_fas = 0;
 	nreno->css_last_fas = 0;
+
 	/* SEARCH_begin */
+	/*
+	 * SEARCH: Initialize congestion tracking.
+	 *
+	 * Sets up SEARCH state on connection creation.
+	 * - Resets bin buffers.
+	 * - Initializes ERTT helper if available.
+	 */
 	nreno->last_rtt_sample = 0;
 	nreno->search_cumulative_acked_bytes = 0;
-	if (V_use_search)
+	if (V_use_search){
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
+	}
 
+	if (ertt_id <= 0) {
+    	ertt_id = khelp_get_id("ertt");
+    	if (ertt_id <= 0) {
+    		printf("%s: h_ertt module not found, falling back to srtt\n", __func__);
+        	ertt_id = -1;  // mark unavailable
+    	}
+	}
+
+	
 	DEBUG_LOG(" Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
-	get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
+		get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
 	/* SEARCH_end */
+
 	return (0);
 }
 
@@ -299,28 +352,6 @@ newreno_cb_destroy(struct cc_var *ccv)
 
 /* SEARCH_begin */
 /*
- * SEARCH: Get current time in microseconds.
- *
- * Wrapper around tcp_get_usecs() that returns a 64-bit timestamp.
- * Prevents overflow caused by 32-bit microsecond counters by
- * combining seconds and microseconds explicitly.
- */
-static inline uint64_t
-get_now_us(void)
-{
-    struct timeval tv;
-    tcp_get_usecs(&tv);
-    /* 
-    * NOTE: Be careful with overflow here!
-    * If tcp_get_usecs() returns a 32-bit microsecond counter, it will wrap
-    * around every ~71 minutes (2^32 µs). That’s why logs may show `now`
-    * jumping from ~4,294,966,xxx back to a small number.
-    * Using a 64-bit calculation (tv_sec * 1e6 + tv_usec) avoids this issue.
-    */
-    return ((uint64_t)tv.tv_sec * 1000000ULL) + tv.tv_usec;
-}
-
-/*
  * SEARCH: Retrieve smoothed RTT (srtt) in microseconds.
  *
  * Converts t_srtt (stored in fixed-point ticks) to us using TCP_RTT_SHIFT.
@@ -331,12 +362,47 @@ get_srtt_us(struct cc_var* ccv) {
 	uint64_t srtt = CCV(ccv, t_srtt);
 	return (((uint64_t)srtt) * tick) >> TCP_RTT_SHIFT;  // convert to microseconds
 }
- 
+
+/*
+ * SEARCH: Retrieve Enhanced RTT (ERTT) if available.
+ *
+ * Uses the h_ertt helper to get high-resolution RTT measurements.
+ * Falls back to smoothed RTT when ERTT is not registered.
+ */
+static uint64_t
+get_ertt_us(struct cc_var *ccv)
+{
+	struct tcpcb *tp = ccv->ccvc.tcp;
+
+	/* If ERTT is available, use it */
+	if (ertt_id > 0) {
+		struct ertt *e_t = (struct ertt *)khelp_get_osd(&tp->t_osd, ertt_id);
+		if (e_t != NULL && e_t->rtt > 0)
+		/* e_t->rtt is in ticks → convert to microseconds */
+			return (uint64_t)e_t->rtt * (uint64_t)tick;
+	}
+
+	/* Fallback: smoothed RTT */
+	uint64_t srtt = CCV(ccv, t_srtt);
+	return ((srtt * tick) >> TCP_RTT_SHIFT);
+}
+
 /*
  * SEARCH: Dynamic scaling to prevent overflow.
  *
  * Right-shifts all SEARCH bins (acked and sent) if any bin value exceeds MAX_US_INT.
  * This ensures bin values stay within safe range while maintaining proportionality.
+ *
+ * Arguments:
+ *  - ccv: congestion control variable
+ *  - bin_value: the max value of sent and acked bytes that triggered scaling
+ *
+ * Returns:
+ *  - Number of right-shifts applied (num_shift)
+ *
+ * Notes:
+ *  - Updates both bin arrays and increments search_scale_factor accordingly.
+ *  - Scaling is cumulative across the lifetime of a connection.
  */
 static uint8_t 
 search_bit_shifting(struct cc_var* ccv, uint64_t bin_value) {
@@ -376,6 +442,11 @@ search_bit_shifting(struct cc_var* ccv, uint64_t bin_value) {
  * Called on first ACK reception to establish the SEARCH window structure.
  * Sets bin duration, end timestamp, and populates the first bin with
  * cumulative acked and sent bytes (scaled if necessary).
+ *
+ * Arguments:
+ *  - ccv: congestion control variable
+ *  - now_us: current timestamp (us)
+ *  - rtt_us: current RTT (us)
  */
 static void 
 search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
@@ -411,7 +482,7 @@ search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	nreno->search_acked_bin[0] = (search_bin_t)acked_val;
 	nreno->search_sent_bin[0]  = (search_bin_t)sent_val;
 }
- 
+
 /*
  * SEARCH: Advance bin windows and maintain temporal continuity.
  *
@@ -420,6 +491,15 @@ search_init_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
  *  - Resets bins if too much time has elapsed (missed bins).
  *  - Filled intermediate bins with last known value when multiple bins have passed.
  *  - Applies dynamic scaling to prevent overflow.
+ *
+ * Arguments:
+ *  - ccv: congestion control variable
+ *  - now_us: current timestamp (µs)
+ *  - rtt_us: current RTT (µs)
+ *
+ * Note:
+ *  - 'passed_bins' > 1 indicates time gap; bins are filled with last known values.
+ *  - If excessive bins were skipped (SEARCH_ALPHA threshold), full reset occurs.
  */
 static void 
 search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
@@ -432,7 +512,11 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	uint8_t amount_scaled = 0; 
 	uint64_t initial_rtt = 0;
 	uint64_t largest_val = 0; 
-	int i; 
+	int i;
+
+	// Q: APP_limited?
+	/* FreeBSD doesn’t have an explicit app_limited field in the struct tcpcb, so we'll need to add and manage it. */
+
 
 	/* If passed_bins greater than 1, it means we have some missed bins */
 	passed_bins = ((now_us - nreno->search_bin_end_us) / nreno->search_bin_duration_us) + 1;
@@ -440,7 +524,7 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	initial_rtt = nreno->search_bin_duration_us * SEARCH_ACKED_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
 	SEARCH_LOG(" SEARCH_INFO:[now %lu] Update bins: [passed_bins %d] [initial_rtt %lu]\n", 
-	now_us, passed_bins, initial_rtt);
+		now_us, passed_bins, initial_rtt);
 
 	/* Need reset due to missed bins */
 	if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
@@ -502,9 +586,11 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
  *  - left, right: window bounds (bin indices)
  *  - fraction: percentage (0–100) for fractional coverage at edges
  */
+
 static inline uint64_t
 search_compute_sent_window(struct cc_var *ccv,
-                      int32_t left, int32_t right, uint32_t fraction) {
+                      int32_t left, int32_t right, uint32_t fraction)
+{
     uint64_t w = 0;
     w  = SEARCH_SENT_BIN(ccv, right - 1) - SEARCH_SENT_BIN(ccv, left);
 
@@ -530,13 +616,15 @@ search_compute_sent_window(struct cc_var *ccv,
  */
 static inline uint64_t
 search_compute_delv_window(struct cc_var *ccv,
-                      int32_t left, int32_t right) {
+                      int32_t left, int32_t right)
+{
     uint64_t w = 0;
 
     w = SEARCH_ACKED_BIN(ccv, right) - SEARCH_ACKED_BIN(ccv, left);
 
     return w;
 }
+
 
 /*
  * SEARCH: Exit slow start and rollback congestion window if enabled.
@@ -576,24 +664,35 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
-		if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
+		if (nreno->search_curr_idx - cong_idx <= 39){
 
 			/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
 			overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
 
-		/*
-		* Reduce the current congestion window,
-		* but guard so it doesn't drop below the initial cwnd
-		* or is not larger than the current cwnd (in case of TCP reset)
-		*/
-		if (overshoot_cwnd < CCV(ccv, snd_cwnd))
-			CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments);
-		else 
-			CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
+			// SEARCH_LOG(" SEARCH_INFO: [now %lu]"
+			//  	" [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [cong_idx %u] [updated_cwnd %u]\n", 
+			// 		now_us, 
+			// 		CCV(ccv, snd_cwnd), 
+			// 		overshoot_cwnd,
+			// 		cong_idx,
+			// 		max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+
+			/*
+			* Reduce the current congestion window,
+			* but guard so it doesn't drop below the initial cwnd
+			* or is not larger than the current cwnd (in case of TCP reset)
+			*/
+			if (overshoot_cwnd < CCV(ccv, snd_cwnd))
+				CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments);
+			else 
+				CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
 		}
+		else 
+			DEBUG_LOG("DEBUG: [now %lu] cong_idx is too small for rollback [cong_idx %u] \n", now_us, cong_idx); 
 	}
 
 	CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
+
 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 
 	SEARCH_LOG(" SEARCH_INFO: [now %lu]"
@@ -666,7 +765,6 @@ search_log_exit_rate(struct cc_var *ccv,
  *  - Uses normalized difference (norm_diff) between delivered and sent bytes
  *    to determine slowdown. Exits slow start when norm_diff exceeds SEARCH_THRESH.
  */
-
 static bool 
 search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
@@ -680,6 +778,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 	/* by receiving the first ack packet, initialize bin duration and bin end time */
 	if (nreno->search_curr_idx < 0) {
+		
 		search_init_bins(ccv, now_us, rtt_us);
 		return false;
 	}
@@ -690,6 +789,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	}
 
 	search_update_bins(ccv, now_us, rtt_us);
+
 
 	/* check if there are enough bins after the shift for computing the sent window */
 	prev_idx = nreno->search_curr_idx - (rtt_us / nreno->search_bin_duration_us);
@@ -718,7 +818,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 			/* check for exit condition */
 			if (prev_sent_bytes >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
-
 				search_log_exit_rate(ccv, nreno,
                      prev_idx,
                      now_us,
@@ -738,11 +837,13 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 						prev_idx,
 						fraction
 						);
-
+				
 				search_exit_slow_start(ccv, now_us, rtt_us);
+
 				return true;  /* exit triggered */
 			}
 		}
+
 	}
 
 	SEARCH_LOG(" SEARCH_INFO: [now %lu] [bin_duration %d] "
@@ -764,11 +865,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 }
 /* SEARCH_end */
 
-static void
-newreno_ack_received(struct cc_var *ccv, uint16_t type)
-{
+static void 
+newreno_ack_received(struct cc_var *ccv, uint16_t type) {
+
 	struct newreno *nreno;
-	
+
 	nreno = ccv->cc_data;
 
 	/* SEARCH_begin */
@@ -785,49 +886,65 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	// Update cumulative delivered bytes for SEARCH analysis
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 	/* SEARCH_end */
-
+	
 	#if defined(SEARCH_LOG_ENABLED)
 	uint32_t inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
-	uint32_t snwd = CCV(ccv, snd_wnd);
 	#endif
 
-	SEARCH_LOG("[SEARCH][STATE] [cwnd %u] [inflight %u] [rwnd %u] [snwd %u] [cwnd_limited %d]\n",
-           cwnd, inflight, rwnd, snwd, (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0);
-	
+	SEARCH_LOG("[SEARCH][STATE] [cwnd %u] [inflight %u] [rwnd %u] [cwnd_limited %d]\n",
+           cwnd, inflight, rwnd, (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0);
+
+	SEARCH_LOG("[SEARCH][DEBUG] [type %d] [in_recovery %d] [cwnd_limited %d] "
+           "[t_flags %x] [snd_cwnd %u] [ssthresh %u] [bytes_this_ack %u] "
+           "[flags %x]  [total_acked %u] [total_sent %lu]\n",
+           type,
+           IN_RECOVERY(CCV(ccv, t_flags)),
+           (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
+           CCV(ccv, t_flags),
+           CCV(ccv, snd_cwnd),
+           CCV(ccv, snd_ssthresh),
+           ccv->bytes_this_ack,
+           ccv->flags,
+           nreno->search_cumulative_acked_bytes,
+           CCV(ccv, t_sndbytes));
+
+
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
-	    (ccv->flags & CCF_CWND_LIMITED)) {
+		(ccv->flags & CCF_CWND_LIMITED)) {
 		u_int cw = CCV(ccv, snd_cwnd);
 		u_int incr = CCV(ccv, t_maxseg);
 
+		
+
 		/*
-		 * Regular in-order ACK, open the congestion window.
-		 * Method depends on which congestion control state we're
-		 * in (slow start or cong avoid) and if ABC (RFC 3465) is
-		 * enabled.
-		 *
-		 * slow start: cwnd <= ssthresh
-		 * cong avoid: cwnd > ssthresh
-		 *
-		 * slow start and ABC (RFC 3465):
-		 *   Grow cwnd exponentially by the amount of data
-		 *   ACKed capping the max increment per ACK to
-		 *   (abc_l_var * maxseg) bytes.
-		 *
-		 * slow start without ABC (RFC 5681):
-		 *   Grow cwnd exponentially by maxseg per ACK.
-		 *
-		 * cong avoid and ABC (RFC 3465):
-		 *   Grow cwnd linearly by maxseg per RTT for each
-		 *   cwnd worth of ACKed data.
-		 *
-		 * cong avoid without ABC (RFC 5681):
-		 *   Grow cwnd linearly by approximately maxseg per RTT using
-		 *   maxseg^2 / cwnd per ACK as the increment.
-		 *   If cwnd > maxseg^2, fix the cwnd increment at 1 byte to
-		 *   avoid capping cwnd.
-		 */
+		* Regular in-order ACK, open the congestion window.
+		* Method depends on which congestion control state we're
+		* in (slow start or cong avoid) and if ABC (RFC 3465) is
+		* enabled.
+		*
+		* slow start: cwnd <= ssthresh
+		* cong avoid: cwnd > ssthresh
+		*
+		* slow start and ABC (RFC 3465):
+		*   Grow cwnd exponentially by the amount of data
+		*   ACKed capping the max increment per ACK to
+		*   (abc_l_var * maxseg) bytes.
+		*
+		* slow start without ABC (RFC 5681):
+		*   Grow cwnd exponentially by maxseg per ACK.
+		*
+		* cong avoid and ABC (RFC 3465):
+		*   Grow cwnd linearly by maxseg per RTT for each
+		*   cwnd worth of ACKed data.
+		*
+		* cong avoid without ABC (RFC 5681):
+		*   Grow cwnd linearly by approximately maxseg per RTT using
+		*   maxseg^2 / cwnd per ACK as the increment.
+		*   If cwnd > maxseg^2, fix the cwnd increment at 1 byte to
+		*   avoid capping cwnd.
+		*/
 		if (cw > CCV(ccv, snd_ssthresh)) {
 			if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
 				/*
@@ -847,103 +964,125 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					incr = 0;
 			} else
 				incr = max((incr * incr / cw), 1);
+	
 		} else if (V_tcp_do_rfc3465) {
-			/*
-			 * In slow-start with ABC enabled and no RTO in sight?
-			 * (Must not use abc_l_var > 1 if slow starting after
-			 * an RTO. On RTO, snd_nxt = snd_una, so the
-			 * snd_nxt == snd_max check is sufficient to
-			 * handle this).
-			 *
-			 * XXXLAS: Find a way to signal SS after RTO that
-			 * doesn't rely on tcpcb vars.
-			 */
-			uint16_t abc_val;
+				/*
+				 * In slow-start with ABC enabled and no RTO in sight?
+				 * (Must not use abc_l_var > 1 if slow starting after
+				 * an RTO. On RTO, snd_nxt = snd_una, so the
+				 * snd_nxt == snd_max check is sufficient to
+				 * handle this).
+				 *
+				 * XXXLAS: Find a way to signal SS after RTO that
+				 * doesn't rely on tcpcb vars.
+				 */
+				uint16_t abc_val;
 
-			if (ccv->flags & CCF_USE_LOCAL_ABC)
-				abc_val = ccv->labc;
-			else
-				abc_val = V_tcp_abc_l_var;
+				if (ccv->flags & CCF_USE_LOCAL_ABC)
+					abc_val = ccv->labc;
+				else
+					abc_val = V_tcp_abc_l_var;
 
-			/* SEARCH_begin */
-			if (V_use_hystartpp) {
-				DEBUG_LOG("HyStartPP_INFO: [now %lu] Update HyStartPP in slow start\n", now_us); 
-				if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
-					(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
-					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
+				/* SEARCH_begin */
+				if (V_use_hystartpp) {
+					DEBUG_LOG("HyStartPP_INFO: [now %lu] Update HyStartPP in slow start\n", now_us); 
+				 
+					if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
+						(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
+						((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
-					DEBUG_LOG("HyStartPP_INFO: [now %lu] HyStartPP is allowed in slow start\n", now_us); 
-					/*
-					 * Hystart is allowed and still enabled and we are not yet
-					 * in CSS. Lets check to see if we can make a decision on
-					 * if we need to go into CSS.
-					 */
-					if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
-						(nreno->css_current_round_minrtt != 0xffffffff) &&
-						(nreno->css_lastround_minrtt != 0xffffffff)) {
-						uint32_t rtt_thresh;
+						DEBUG_LOG("HyStartPP_INFO: [now %lu] HyStartPP is allowed in slow start\n", now_us); 
+	 				
+						/*
+						 * Hystart is allowed and still enabled and we are not yet
+						 * in CSS. Lets check to see if we can make a decision on
+						 * if we need to go into CSS.
+						 */
+						if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
+							(nreno->css_current_round_minrtt != 0xffffffff) &&
+							(nreno->css_lastround_minrtt != 0xffffffff)) {
+							uint32_t rtt_thresh;
 
-						/* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
-						rtt_thresh = (nreno->css_lastround_minrtt >> 3);
-						if (rtt_thresh < hystart_minrtt_thresh)
-							rtt_thresh = hystart_minrtt_thresh;
-						if (rtt_thresh > hystart_maxrtt_thresh)
-							rtt_thresh = hystart_maxrtt_thresh;
-						newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
-						if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
-							/* Enter CSS */
-							nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
-							nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
-							/*
-							 * The draft (v4) calls for us to set baseline to css_current_round_min
-							 * but that can cause an oscillation. We probably shoudl be using
-							 * css_lastround_minrtt, but the authors insist that will cause
-							 * issues on exiting early. We will leave the draft version for now
-							 * but I suspect this is incorrect.
-							 */
-							nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
-							nreno->css_entered_at_round = nreno->css_current_round;
-							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
+							/* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
+							rtt_thresh = (nreno->css_lastround_minrtt >> 3);
+							if (rtt_thresh < hystart_minrtt_thresh)
+								rtt_thresh = hystart_minrtt_thresh;
+							if (rtt_thresh > hystart_maxrtt_thresh)
+								rtt_thresh = hystart_maxrtt_thresh;
+							newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
+							if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
+								/* Enter CSS */
+								nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
+								nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
+								/*
+								 * The draft (v4) calls for us to set baseline to css_current_round_min
+								 * but that can cause an oscillation. We probably shoudl be using
+								 * css_lastround_minrtt, but the authors insist that will cause
+								 * issues on exiting early. We will leave the draft version for now
+								 * but I suspect this is incorrect.
+								 */
+								nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
+								nreno->css_entered_at_round = nreno->css_current_round;
+								newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
+							}
 						}
 					}
 				}
-			}
-			/* SEARCH_end */
-
-			if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
-				incr = min(ccv->bytes_this_ack,
-				    ccv->nsegs * abc_val *
-				    CCV(ccv, t_maxseg));
-			else
-				incr = min(ccv->bytes_this_ack, CCV(ccv, t_maxseg));
-
-			/* Only if Hystart is enabled will the flag get set */
-			if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
-				/* SEARCH_begin */
-				if (V_use_hystartpp)
-					incr /= hystart_css_growth_div;
 				/* SEARCH_end */
-				newreno_log_hystart_event(ccv, nreno, 3, incr);
-			}
 
-		 	/* SEARCH_begin */
-		 	/* 
-			 * Invoke SEARCH slow start exit detector:
-			 * - Monitors throughput evolution over time windows.
-			 * - Returns true when delivery growth stalls, triggering slow start exit.
-			 */
-		 	if (V_use_search){
-				/* implement search algorithm */
-				if (search_update(ccv, now_us, rtt_us)) { /* returns true if exit  */
-    				incr = 0;	/* freeze cwnd increase upon exit detection */
+				if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
+					incr = min(ccv->bytes_this_ack,
+						ccv->nsegs * abc_val *
+						CCV(ccv, t_maxseg));
+				else
+					incr = min(ccv->bytes_this_ack, CCV(ccv, t_maxseg));
+
+				/* SEARCH_begin */
+				DEBUG_LOG( "DEBUGGING: [now %lu] [incr %u] [snd_nxt %u] [snd_max %u] [nseq %u] [abs_val %u]\n", 
+			 			now_us, 
+			 			incr,
+			 			CCV(ccv, snd_nxt),
+			 			CCV(ccv, snd_max),
+			 			ccv->nsegs, 
+			 			abc_val);
+	 			/* SEARCH_end */
+
+				/* Only if Hystart is enabled will the flag get set */
+				if (nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) {
+					/* SEARCH_begin */
+					if (V_use_hystartpp)
+						incr /= hystart_css_growth_div;
+					/* SEARCH_end */
+					newreno_log_hystart_event(ccv, nreno, 3, incr);
 				}
-		 	}
-		 	/* SEARCH_end */
+
+			 	/* SEARCH_begin */
+			 	/* 
+				 * Invoke SEARCH slow start exit detector:
+				 * - Monitors throughput evolution over time windows.
+				 * - Returns true when delivery growth stalls, triggering slow start exit.
+				 */
+			 	if (V_use_search){
+					/* implement search algorithm */
+					if (search_update(ccv, now_us, rtt_us)) { /* returns true if exit  */
+        				incr = 0;	/* freeze cwnd increase upon exit detection */
+    				}
+			 	}
+			 	/* SEARCH_end */
 		}
 		/* ABC is on by default, so incr equals 0 frequently. */
 		if (incr > 0)
 			CCV(ccv, snd_cwnd) = min(cw + incr,
-			    TCP_MAXWIN << CCV(ccv, snd_scale));
+				TCP_MAXWIN << CCV(ccv, snd_scale));
+
+		/* SEARCH_begin */
+		DEBUG_LOG("DEBUGGING: [now %lu] [incr %u] [cw %u] [cwnd %u]\n", 
+	 		now_us, 
+	 		incr,
+	 		cw,
+	 		CCV(ccv, snd_cwnd));
+		/* SEARCH_end */
+
 	}
 
 	ACK_LOG("ACK_FUNC_INFO: [now %lu] "
@@ -964,6 +1103,8 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 		nreno->search_cumulative_acked_bytes,
 		CCV(ccv, t_sndbytes)
 		);
+
+	/* SEARCH_end */
 }
 
 static void
@@ -1009,18 +1150,18 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	 * us to use the lower valued back-off.
 	 */
 	if ((type == CC_ECN) &&
-	    (V_cc_do_abe ||
-	    ((nreno != NULL) && (nreno->newreno_flags & CC_NEWRENO_BETA_ECN_ENABLED))))
+		(V_cc_do_abe ||
+		((nreno != NULL) && (nreno->newreno_flags & CC_NEWRENO_BETA_ECN_ENABLED))))
 		factor = beta_ecn;
 	else
 		factor = beta;
 
 	/* Catch algos which mistakenly leak private signal types. */
 	KASSERT((type & CC_SIGPRIVMASK) == 0,
-	    ("%s: congestion signal type 0x%08x is private\n", __func__, type));
+		("%s: congestion signal type 0x%08x is private\n", __func__, type));
 
 	cwin = max(((uint64_t)cwin * (uint64_t)factor) / (100ULL * (uint64_t)mss),
-	    2) * mss;
+		2) * mss;
 
 	switch (type) {
 	case CC_NDUPACK:
@@ -1039,10 +1180,10 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 		}
 		if (!IN_FASTRECOVERY(CCV(ccv, t_flags))) {
 			if (IN_CONGRECOVERY(CCV(ccv, t_flags) &&
-			    V_cc_do_abe && V_cc_abe_frlossreduce)) {
+				V_cc_do_abe && V_cc_abe_frlossreduce)) {
 				CCV(ccv, snd_ssthresh) =
-				    ((uint64_t)CCV(ccv, snd_ssthresh) *
-				     (uint64_t)beta) / (uint64_t)beta_ecn;
+					((uint64_t)CCV(ccv, snd_ssthresh) *
+					 (uint64_t)beta) / (uint64_t)beta_ecn;
 			}
 			if (!IN_CONGRECOVERY(CCV(ccv, t_flags)))
 				CCV(ccv, snd_ssthresh) = cwin;
@@ -1052,8 +1193,8 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	case CC_ECN:
 		/* SEARCH_begin */
 		if (V_use_search){
-			DEBUG_LOG( " DEBUGGING: ECN flag happens at [now %lu]\n", get_now_us());
-		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
+		 	DEBUG_LOG( " DEBUGGING: ECN flag happens at [now %lu]\n", get_now_us()); 
+	 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		}
 		/* SEARCH_end */
 
@@ -1072,13 +1213,14 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	case CC_RTO:
 		/* SEARCH_begin */
 		if (V_use_search){
-			DEBUG_LOG( " DEBUGGING: RTO happens at [now %lu]\n", get_now_us());
+			DEBUG_LOG( " DEBUGGING: RTO happens at [now %lu]\n", get_now_us()); 
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		}
 		/* SEARCH_end */
+
 		CCV(ccv, snd_ssthresh) = max(min(CCV(ccv, snd_wnd),
 						 CCV(ccv, snd_cwnd)) / 2 / mss,
-					     2) * mss;
+						 2) * mss;
 		CCV(ccv, snd_cwnd) = mss;
 		break;
 	}
@@ -1090,10 +1232,9 @@ newreno_ctl_output(struct cc_var *ccv, struct sockopt *sopt, void *buf)
 	struct newreno *nreno;
 	struct cc_newreno_opts *opt;
 
-	/* SEARCH_begin */
 	if (sopt->sopt_valsize != sizeof(struct cc_newreno_opts))
 		return (EMSGSIZE);
-	/* SEARCH_end */
+
 	if (CC_ALGO(ccv->ccvc.tcp) != &newreno_search_cc_algo)
 		return (ENOPROTOOPT);
 
@@ -1164,7 +1305,7 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_rttsample_count = 0;
 	nreno->css_current_round = round_cnt;
 	if ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) &&
-	    ((round_cnt - nreno->css_entered_at_round) >= hystart_css_rounds)) {
+		((round_cnt - nreno->css_entered_at_round) >= hystart_css_rounds)) {
 		/* Enter CA */
 		if (ccv->flags & CCF_HYSTART_CAN_SH_CWND) {
 			/*
@@ -1177,8 +1318,8 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 				/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
 			 	if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
-					DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[1] [now %lu]\n", get_now_us())
-			 	}
+					DEBUG_LOG( " DEBUGGING: ssthresh is set by HyStartPP[1] [now %lu]\n", get_now_us()); 
+				}
 			} else {
 				if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
@@ -1187,7 +1328,7 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 			}
 			if (V_use_hystartpp){
 				CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
-				DEBUG_LOG( " DEBUGGING: cwnd is set by HyStartPP [now %lu]\n", get_now_us());
+				DEBUG_LOG( " DEBUGGING: cwnd is set by HyStartPP [now %lu]\n", get_now_us()); 
 			}
 			nreno->css_entered_at_round = round_cnt;
 		} else {
@@ -1222,7 +1363,7 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 	}
 	/* SEARCH_begin */
 	nreno->last_rtt_sample = usec_rtt;	 
-	/* SEARCH_end */
+
 	nreno->css_rttsample_count++;
 	nreno->css_last_fas = fas;
 	if (nreno->css_current_round_minrtt > usec_rtt) {
@@ -1230,9 +1371,9 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->css_lowrtt_fas = nreno->css_last_fas;
 	}
 	if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
-	    (nreno->css_current_round_minrtt != 0xffffffff) &&
-	    (nreno->css_current_round_minrtt < nreno->css_baseline_minrtt) &&
-	    (nreno->css_lastround_minrtt != 0xffffffff)) {
+		(nreno->css_current_round_minrtt != 0xffffffff) &&
+		(nreno->css_current_round_minrtt < nreno->css_baseline_minrtt) &&
+		(nreno->css_lastround_minrtt != 0xffffffff)) {
 		/*
 		 * We were in CSS and the RTT is now less, we
 		 * entered CSS erroneously.
@@ -1244,22 +1385,20 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 	if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)
 		newreno_log_hystart_event(ccv, nreno, 5, usec_rtt);
 }
-
 SYSCTL_DECL(_net_inet_tcp_cc_newreno);
 SYSCTL_NODE(_net_inet_tcp_cc, OID_AUTO, newreno,
-    CTLFLAG_RW | CTLFLAG_MPSAFE, NULL,
-    "New Reno related settings");
+	CTLFLAG_RW | CTLFLAG_MPSAFE, NULL,
+	"New Reno related settings");
 
 SYSCTL_PROC(_net_inet_tcp_cc_newreno, OID_AUTO, beta,
-    CTLFLAG_VNET | CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_NEEDGIANT,
-    &VNET_NAME(newreno_beta), 3, &newreno_beta_handler, "IU",
-    "New Reno beta, specified as number between 1 and 100");
+	CTLFLAG_VNET | CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_NEEDGIANT,
+	&VNET_NAME(newreno_beta), 3, &newreno_beta_handler, "IU",
+	"New Reno beta, specified as number between 1 and 100");
 
 SYSCTL_PROC(_net_inet_tcp_cc_newreno, OID_AUTO, beta_ecn,
-    CTLFLAG_VNET | CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_NEEDGIANT,
-    &VNET_NAME(newreno_beta_ecn), 3, &newreno_beta_handler, "IU",
-    "New Reno beta ecn, specified as number between 1 and 100");
-
+	CTLFLAG_VNET | CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_NEEDGIANT,
+	&VNET_NAME(newreno_beta_ecn), 3, &newreno_beta_handler, "IU",
+	"New Reno beta ecn, specified as number between 1 and 100");
 
 /* SEARCH_begin */
 DECLARE_CC_MODULE(newreno, &newreno_search_cc_algo);
