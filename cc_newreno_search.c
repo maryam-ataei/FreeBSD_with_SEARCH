@@ -778,8 +778,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
         nreno->search_cumulative_acked_bytes,
         ccv->curack,
         CCV(ccv, snd_cwnd),
-        CCV(ccv, snd_ssthresh),
-        CCV(ccv, t_maxseg)
+        CCV(ccv, snd_ssthresh)
         );
 
 	log(LOG_INFO, "<%p> ACK:[CCRG] [mss %u] [total_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]\n",
