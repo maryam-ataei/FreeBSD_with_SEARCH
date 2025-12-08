@@ -99,6 +99,7 @@
 #define ACK_LOG_ENABLED
 //#define DEBUG_LOG_ENABLED
 
+static void	newreno_cb_destroy(struct cc_var *ccv);
 static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
 static void	newreno_after_idle(struct cc_var *ccv);
 static void	newreno_cong_signal(struct cc_var *ccv, uint32_t type);
