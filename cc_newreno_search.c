@@ -97,7 +97,7 @@
 #define SEARCH_LOG_ENABLED
 #define HYSTARTPP_LOG_ENABLED
 #define ACK_LOG_ENABLED
-//#define DEBUG_LOG_ENABLED
+#define DEBUG_LOG_ENABLED
 
 static void	newreno_cb_destroy(struct cc_var *ccv);
 static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
@@ -274,10 +274,10 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	if (V_use_search)
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 
-	#if defined(ACK_LOG_ENABLED)
-		log(LOG_INFO, "<%p> ACK:[CCRG]Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
-		ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
-	#endif
+	//#if defined(ACK_LOG_ENABLED)
+	log(LOG_INFO, "<%p> ACK:[CCRG]Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
+	ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
+	//#endif
 	/* SEARCH_end */
 	return (0);
 }
@@ -408,10 +408,10 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	initial_rtt = nreno->search_bin_duration_us * SEARCH_ACKED_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
-	#if defined(SEARCH_LOG_ENABLED)
+	//#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, "<%p> SEARCH:[CCRG][now %lu] Update bins: [passed_bins %d] [initial_rtt %lu]\n", 
 	ccv, now_us, passed_bins, initial_rtt);
-	#endif
+	//#endif
 
 	/* Need reset due to missed bins */
 	if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
@@ -449,21 +449,21 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) = (search_bin_t)acked_val;
 	SEARCH_SENT_BIN(ccv,  nreno->search_curr_idx) = (search_bin_t)sent_val;
 
-	#if defined(SEARCH_LOG_ENABLED)
+	//#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, " SEARCH:[CCRG] SEARCH SENT BINS: " );
 	for (int i = 0; i < SEARCH_SENT_BINS; i++) {
 		log(LOG_INFO, "| %u ", nreno->search_sent_bin[i]);
 	}
 	log(LOG_INFO, "|\n");
-	#endif
+	//#endif
 
-	#if defined(SEARCH_LOG_ENABLED)
+	//#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, "SEARCH:[CCRG] SEARCH ACKED BINS: ");
 	for (int i = 0; i < SEARCH_ACKED_BINS; i++) {
 		log(LOG_INFO, "| %u ", nreno->search_acked_bin[i]);
 	}
 	log(LOG_INFO, "|\n");
-	#endif
+	//#endif
 }
 
 /*
@@ -571,14 +571,13 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 
-	#if defined(SEARCH_LOG_ENABLED)
-		log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu]"
-	 		" [exit condition was met [cwnd %u] [ssthresh %u]\n", 
-	 		ccv,
-			now_us, 
-			CCV(ccv, snd_cwnd), 
-			CCV(ccv, snd_ssthresh));
-	#endif
+	//#if defined(SEARCH_LOG_ENABLED)
+	log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", 
+ 		ccv,
+		now_us, 
+		CCV(ccv, snd_cwnd), 
+		CCV(ccv, snd_ssthresh));
+	//#endif
 }
 
 /*
@@ -596,36 +595,36 @@ search_log_exit_rate(struct cc_var *ccv,
                     uint64_t now_us,
                     uint64_t rtt_us)
 {
-	#if defined(SEARCH_LOG_ENABLED)
-		uint64_t delta_acked_bytes_for_rtt = 0;
-		uint64_t delta_sent_bytes_for_rtt = 0;
-		uint64_t b_acked_per_sec_per_rtt = 0;
-		uint64_t b_sent_per_sec_per_rtt = 0;
+	//#if defined(SEARCH_LOG_ENABLED)
+	uint64_t delta_acked_bytes_for_rtt = 0;
+	uint64_t delta_sent_bytes_for_rtt = 0;
+	uint64_t b_acked_per_sec_per_rtt = 0;
+	uint64_t b_sent_per_sec_per_rtt = 0;
 
-		if (rtt_us == 0) 
-			return;
-		
-		if (SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) > SEARCH_ACKED_BIN(ccv, prev_idx))
-			delta_acked_bytes_for_rtt = SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) - SEARCH_ACKED_BIN(ccv, prev_idx);
+	if (rtt_us == 0) 
+		return;
+	
+	if (SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) > SEARCH_ACKED_BIN(ccv, prev_idx))
+		delta_acked_bytes_for_rtt = SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) - SEARCH_ACKED_BIN(ccv, prev_idx);
 
-		b_acked_per_sec_per_rtt = (delta_acked_bytes_for_rtt * 8ULL * 1000000ULL) / rtt_us;  /* b/s */
+	b_acked_per_sec_per_rtt = (delta_acked_bytes_for_rtt * 8ULL * 1000000ULL) / rtt_us;  /* b/s */
 
-		if (SEARCH_SENT_BIN(ccv, nreno->search_curr_idx) > SEARCH_SENT_BIN(ccv, prev_idx))
-			delta_sent_bytes_for_rtt = SEARCH_SENT_BIN(ccv, nreno->search_curr_idx) - SEARCH_SENT_BIN(ccv, prev_idx);
+	if (SEARCH_SENT_BIN(ccv, nreno->search_curr_idx) > SEARCH_SENT_BIN(ccv, prev_idx))
+		delta_sent_bytes_for_rtt = SEARCH_SENT_BIN(ccv, nreno->search_curr_idx) - SEARCH_SENT_BIN(ccv, prev_idx);
 
-		b_sent_per_sec_per_rtt = (delta_sent_bytes_for_rtt * 8ULL * 1000000ULL) / rtt_us;  /* b/s */
+	b_sent_per_sec_per_rtt = (delta_sent_bytes_for_rtt * 8ULL * 1000000ULL) / rtt_us;  /* b/s */
 
-		log(LOG_INFO, "<%p> SEARCH:[CCRG] SEARCH_EXIT_RATE: "
-	    "[now %lu] [delta_sent_bytes_for_rtt %lu] [delta_acked_bytes_for_rtt %lu] [rtt_us %lu] "
-	    "[rate_sent_per_rtt %lu] [rate_acked_per_rtt %lu b/s]\n",
-	    ccv,
-	    now_us,
-	    delta_sent_bytes_for_rtt,
-	    delta_acked_bytes_for_rtt,
-	    rtt_us,
-	    b_sent_per_sec_per_rtt,
-	    b_acked_per_sec_per_rtt);
-	#endif
+	log(LOG_INFO, "<%p> SEARCH:[CCRG] SEARCH_EXIT_RATE: "
+    "[now %lu] [delta_sent_bytes_for_rtt %lu] [delta_acked_bytes_for_rtt %lu] [rtt_us %lu] "
+    "[rate_sent_per_rtt %lu] [rate_acked_per_rtt %lu b/s]\n",
+    ccv,
+    now_us,
+    delta_sent_bytes_for_rtt,
+    delta_acked_bytes_for_rtt,
+    rtt_us,
+    b_sent_per_sec_per_rtt,
+    b_acked_per_sec_per_rtt);
+	//#endif
 }
 
 /*
@@ -703,23 +702,23 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
                      now_us,
                      rtt_us);
 
-				#if defined(SEARCH_LOG_ENABLED)
-					log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
-						"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
-						"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
-						ccv,
-						now_us, 
-						nreno->search_bin_duration_us, 
-						nreno->search_bin_end_us, 
-						curr_delv_bytes,
-						prev_sent_bytes,
-						norm_diff,
-						nreno->search_scale_factor,
-						nreno->search_curr_idx,
-						prev_idx,
-						fraction
-						);
-				#endif
+				//#if defined(SEARCH_LOG_ENABLED)
+				log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
+					"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
+					"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
+					ccv,
+					now_us, 
+					nreno->search_bin_duration_us, 
+					nreno->search_bin_end_us, 
+					curr_delv_bytes,
+					prev_sent_bytes,
+					norm_diff,
+					nreno->search_scale_factor,
+					nreno->search_curr_idx,
+					prev_idx,
+					fraction
+					);
+				//#endif
 
 				search_exit_slow_start(ccv, now_us, rtt_us);
 				return true;  /* exit triggered */
@@ -727,23 +726,23 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		}
 	}
 
-	#if defined(SEARCH_LOG_ENABLED)
-		log(LOG_INFO, "<%p> SEARCH:[CCRG][now %lu] [bin_duration %d] "
-			"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
-			"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
-			ccv,
-			now_us, 
-			nreno->search_bin_duration_us, 
-			nreno->search_bin_end_us, 
-			curr_delv_bytes,
-			prev_sent_bytes,
-			norm_diff,
-			nreno->search_scale_factor,
-			nreno->search_curr_idx,
-			prev_idx,
-			fraction
-			);
-	#endif
+	//#if defined(SEARCH_LOG_ENABLED)
+	log(LOG_INFO, "<%p> SEARCH:[CCRG][now %lu] [bin_duration %d] "
+		"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
+		"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
+		ccv,
+		now_us, 
+		nreno->search_bin_duration_us, 
+		nreno->search_bin_end_us, 
+		curr_delv_bytes,
+		prev_sent_bytes,
+		norm_diff,
+		nreno->search_scale_factor,
+		nreno->search_curr_idx,
+		prev_idx,
+		fraction
+		);
+	//#endif
 
 	return false;
 }
@@ -771,7 +770,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 	/* SEARCH_end */
 
-	#if defined(ACK_LOG_ENABLED)
+	//#if defined(ACK_LOG_ENABLED)
 	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [cur_bytes %u] [curack %u]  [cwnd %u] [ssthresh %u]\n",
         ccv,
         now_us,
@@ -789,9 +788,9 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
         CCV(ccv, t_sndbytes),
         (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0
         );
-  	#endif
+  	//#endif
 
-	#if defined(DEBUG_LOG_ENABLED)
+	//#if defined(DEBUG_LOG_ENABLED)
 	uint32_t inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
@@ -799,7 +798,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 	log(LOG_INFO, "<%p> DEBUG:[CCRG] [cwnd %u] [inflight %u] [rwnd %u] [snwd %u] [cwnd_limited %d]\n",
            ccv, cwnd, inflight, rwnd, snwd, (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0);
-	#endif
+	//#endif
 	
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
 	    (ccv->flags & CCF_CWND_LIMITED)) {
@@ -872,17 +871,17 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 			/* SEARCH_begin */
 			if (V_use_hystartpp) {
-				#if defined(HYSTARTPP_LOG_ENABLED)
-					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] Update HyStartPP in slow start\n", ccv, now_us); 
-				#endif
+				//#if defined(HYSTARTPP_LOG_ENABLED)
+				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] Update HyStartPP in slow start\n", ccv, now_us); 
+				//#endif
 
 				if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
 					(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
-					#if defined(HYSTARTPP_LOG_ENABLED)
-						log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in slow start\n", ccv, now_us); 
-					#endif
+					//#if defined(HYSTARTPP_LOG_ENABLED)
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in slow start\n", ccv, now_us); 
+					//#endif
 					/*
 					 * Hystart is allowed and still enabled and we are not yet
 					 * in CSS. Lets check to see if we can make a decision on
@@ -902,9 +901,9 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 						newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
 						if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
 
-						#if defined(HYSTARTPP_LOG_ENABLED)
-							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in CSS\n", ccv, now_us); 
-						#endif
+						//#if defined(HYSTARTPP_LOG_ENABLED)
+						log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in CSS\n", ccv, now_us); 
+						//#endif
 							/* Enter CSS */
 							nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
 							nreno->css_fas_at_css_entry = nreno->css_lowrtt_fas;
@@ -977,9 +976,9 @@ newreno_after_idle(struct cc_var *ccv)
 		newreno_log_hystart_event(ccv, nreno, 12, CCV(ccv, snd_ssthresh));
 	}
 	/* SEARCH_begin */
-	#if defined(DEBUG_LOG_ENABLED)
-		log(LOG_INFO, "<%p> DEBUG:[CCRG] After idle [now %lu]\n", ccv, get_now_us()); 
-	#endif
+	//#if defined(DEBUG_LOG_ENABLED)
+	log(LOG_INFO, "<%p> DEBUG:[CCRG] After idle [now %lu]\n", ccv, get_now_us()); 
+	//#endif
 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 	/* SEARCH_end */
 }
@@ -1023,9 +1022,9 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	case CC_NDUPACK:
 		/* SEARCH_begin */
 		if (V_use_search){
-			#if defined(ACK_LOG_ENABLED)
-				log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
-			#endif
+			//#if defined(ACK_LOG_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
+			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		}
 		/* SEARCH_end */
@@ -1051,9 +1050,9 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	case CC_ECN:
 		/* SEARCH_begin */
 		if (V_use_search){
-			#if defined(ACK_LOG_ENABLED)
-				log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
-			#endif
+			//#if defined(ACK_LOG_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
+			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		}
 		/* SEARCH_end */
@@ -1073,9 +1072,9 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	case CC_RTO:
 		/* SEARCH_begin */
 		if (V_use_search){
-			#if defined(ACK_LOG_ENABLED)
-				log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
-			#endif
+			//#if defined(ACK_LOG_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
+			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
 		}
 		/* SEARCH_end */
@@ -1180,31 +1179,31 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 				/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
 			 	if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
-					#if defined(HYSTARTPP_LOG_ENABLED)
-						log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[1] [now %lu]\n", ccv, get_now_us());
-					#endif
+					//#if defined(HYSTARTPP_LOG_ENABLED)
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[1] [now %lu]\n", ccv, get_now_us());
+					//#endif
 			 	}
 			} else {
 				if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
-					#if defined(HYSTARTPP_LOG_ENABLED)
-						log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[2] [now %lu]\n", ccv, get_now_us()); 
-					#endif
+					//#if defined(HYSTARTPP_LOG_ENABLED)
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[2] [now %lu]\n", ccv, get_now_us()); 
+					//#endif
 				}
 			}
 			if (V_use_hystartpp){
 				CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
-				#if defined(HYSTARTPP_LOG_ENABLED)
-					log(LOG_INFO, "<%p> HyStartPP:[CCRG] cwnd is set by HyStartPP [now %lu]\n", ccv, get_now_us());
-				#endif
+				//#if defined(HYSTARTPP_LOG_ENABLED)
+				log(LOG_INFO, "<%p> HyStartPP:[CCRG] cwnd is set by HyStartPP [now %lu]\n", ccv, get_now_us());
+				//#endif
 			}
 			nreno->css_entered_at_round = round_cnt;
 		} else {
 			if (V_use_hystartpp){
 				CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
-				#if defined(HYSTARTPP_LOG_ENABLED)
-					log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[3] [now %lu]\n", ccv, get_now_us());
-				#endif
+				//#if defined(HYSTARTPP_LOG_ENABLED)
+				log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[3] [now %lu]\n", ccv, get_now_us());
+				//#endif
 			}
 			/* SEARCH_end */
 
