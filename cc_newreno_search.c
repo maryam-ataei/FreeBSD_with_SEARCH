@@ -568,7 +568,7 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 				overshoot_cwnd,
 				overshoot_cwnd_rescaled,
 				cong_idx,
-				max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments));
 
 		/*
 		* Reduce the current congestion window,
