@@ -556,6 +556,15 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 			/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
 			overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
 
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u]" 
+				" [cong_idx %u] [updated_cwnd %u]\n", 
+				ccv,
+				now_us, 
+				CCV(ccv, snd_cwnd), 
+				overshoot_cwnd,
+				cong_idx,
+				max(CCV(ccv, snd_cwnd) - overshoot_cwnd, V_tcp_initcwnd_segments));
+
 		/*
 		* Reduce the current congestion window,
 		* but guard so it doesn't drop below the initial cwnd
@@ -566,6 +575,8 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		else 
 			CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
 		}
+		else 
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] cong_idx is too small for rollback [cong_idx %u] \n", ccv, now_us, cong_idx); 
 	}
 
 	CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
