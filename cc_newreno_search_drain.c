@@ -530,8 +530,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 	int32_t cong_idx = 0;
 	uint32_t overshoot_cwnd = 0;
 	uint32_t overshoot_cwnd_rescaled = 0;
-	uint32_t inflight = 0;
-
+	
 	/*
 	* If cwnd rollback is enabled, the code calculates the current round-trip time (RTT)
 	* and determines the congestion index (`cong_idx`) from which to compute the overshoot.
