@@ -732,7 +732,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	/* SEARCH drain phase */
 	if (nreno->newreno_flags & CC_NEWRENO_SEARCH_IN_DRAIN) {
 
-		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
+		if (V_tcp_do_newsack)
+			inflight = tcp_compute_pipe(ccv->ccvc.tcp);
+		else
+			inflight = CCV(ccv, snd_max) - ccv->curack;
+
 
 		/* Force cwnd to inflight */
 		CCV(ccv, snd_cwnd) = inflight;
