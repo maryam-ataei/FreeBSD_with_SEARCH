@@ -564,7 +564,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 			nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments);
 
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
-				" [cong_idx %u] [updated_cwnd %u] [search_targeted_cwnd %u]\n", 
+				" [cong_idx %u] [updated_cwnd %u] [search_targeted_cwnd %lu]\n", 
 				ccv,
 				now_us, 
 				CCV(ccv, snd_cwnd), 
