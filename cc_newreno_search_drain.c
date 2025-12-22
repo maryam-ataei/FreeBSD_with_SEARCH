@@ -274,7 +274,7 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	nreno->search_cumulative_acked_bytes = 0;
 	if (V_use_search){
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+		SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 	}
 	//#if defined(ACK_LOG_ENABLED)
 	log(LOG_INFO, "<%p> ACK:[CCRG]Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
@@ -420,11 +420,12 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 		if (passed_bins > SEARCH_WIN_BINS) {
 			search_reset(nreno, RESET_BIN_DURATION_TRUE);
-			nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+			SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		else {
 			search_reset(nreno, RESET_BIN_DURATION_FALSE);
-			nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+			SEARCH_CLEAR_DRAIN_FLAGS(nreno);
+
 		}
 		
 		log(LOG_INFO, "<%p> DEBUG:[CCRG] [now %lu] SEARCH reset due to the missed bins\n",
@@ -655,11 +656,13 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 	uint32_t inflight = 0; // NEW_CHANGE
+	uint32_t mss = 0; // NEW_CHANGE
 
 	if (CCV(ccv, snd_cwnd) > CCV(ccv, snd_ssthresh))
     	return false;
 
-	if (!(nreno->newreno_flags & CC_NEWRENO_SEARCH_IN_DRAIN)) { // NEW_CHANGE
+	if (!(nreno->newreno_flags &
+      (CC_NEWRENO_SEARCH_IN_DRAIN | CC_NEWRENO_SEARCH_DRAIN_INIT))) { // NEW_CHANGE
 		/* by receiving the first ack packet, initialize bin duration and bin end time */
 		if (nreno->search_curr_idx < 0) {
 			search_init_bins(ccv, now_us, rtt_us);
@@ -721,22 +724,33 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 					// NEW_CHANGE
 					/* Enter SEARCH drain instead of hard exit */
-					nreno->newreno_flags |= CC_NEWRENO_SEARCH_IN_DRAIN;
+					nreno->newreno_flags |= CC_NEWRENO_SEARCH_DRAIN_INIT;
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
-					return true;
+					//return true;
 				}
 			}
 		}
 	}
 	/* SEARCH drain phase */
+	if (nreno->newreno_flags & CC_NEWRENO_SEARCH_DRAIN_INIT) {
+
+		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
+		mss = CCV(ccv, t_maxseg);
+
+		CCV(ccv, snd_cwnd) = max(
+        inflight > mss ? inflight - mss : mss,
+        nreno->search_targeted_cwnd
+    	);
+
+		nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_DRAIN_INIT;
+    	nreno->newreno_flags |= CC_NEWRENO_SEARCH_IN_DRAIN;
+    	return true;
+	}
+
 	if (nreno->newreno_flags & CC_NEWRENO_SEARCH_IN_DRAIN) {
 
-		if (V_tcp_do_newsack)
-			inflight = tcp_compute_pipe(ccv->ccvc.tcp);
-		else
-			inflight = CCV(ccv, snd_max) - ccv->curack;
-
+		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 
 		/* Force cwnd to inflight */
 		CCV(ccv, snd_cwnd) = inflight;
@@ -752,7 +766,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 			CCV(ccv, snd_cwnd) = nreno->search_targeted_cwnd;
 			CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 
-			nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+			SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 
 	        /* Fully exit SEARCH */
 	        search_reset(nreno, RESET_BIN_DURATION_TRUE);
@@ -1025,7 +1039,7 @@ newreno_after_idle(struct cc_var *ccv)
 	log(LOG_INFO, "<%p> DEBUG:[CCRG] After idle [now %lu]\n", ccv, get_now_us()); 
 	//#endif
 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-	nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 	/* SEARCH_end */
 }
 
@@ -1072,7 +1086,7 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 			log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
 			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		 	nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+		 	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		/* SEARCH_end */
 
@@ -1101,7 +1115,7 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 			log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
 			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		 	nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+		 	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		/* SEARCH_end */
 
@@ -1124,7 +1138,7 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 			log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
 			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		 	nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;
+		 	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		/* SEARCH_end */
 		CCV(ccv, snd_ssthresh) = max(min(CCV(ccv, snd_wnd),

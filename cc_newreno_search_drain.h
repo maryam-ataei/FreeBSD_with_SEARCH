@@ -86,7 +86,14 @@ struct newreno {
 #define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[(i) % SEARCH_SENT_BINS])
 
 /* Flags values */ // NEW_CHANGE
-#define CC_NEWRENO_SEARCH_IN_DRAIN	0x0100	/* SEARCH-triggered drain phase is active */
+#define CC_NEWRENO_SEARCH_DRAIN_INIT 0x0100	/* SEARCH-triggered drain phase is initiate */
+#define CC_NEWRENO_SEARCH_IN_DRAIN	0x0200	/* SEARCH-triggered drain phase is active */
+
+#define SEARCH_CLEAR_DRAIN_FLAGS(nreno) do {                \
+    (nreno)->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;  \
+    (nreno)->newreno_flags &= ~CC_NEWRENO_SEARCH_DRAIN_INIT;\
+} while (0)
+
 /* SEARCH_end */
 
 struct cc_newreno_opts {
