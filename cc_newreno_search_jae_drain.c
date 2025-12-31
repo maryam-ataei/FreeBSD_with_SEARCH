@@ -552,7 +552,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 	if (V_CWND_ROLLBACK) {
 
-		cong_idx = nreno->search_curr_idx - ((1 * rtt_us) / nreno->search_bin_duration_us);
+		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
 		if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
 
@@ -736,15 +736,20 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	else {
 
 		inflight = nreno->search_snd_max_prev - CCV(ccv, snd_una);
-		nreno->search_snd_max_prev = CCV(ccv, snd_max);
 
 		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cwnd_before %u] [target %lu]\n",
-			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_targeted_cwnd);
+			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cwnd_before %u] [target %lu] [pre_snd_max %u] [snd_max %u] [snd_una %u]\n",
+			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_targeted_cwnd, nreno->search_snd_max_prev, CCV(ccv, snd_max), CCV(ccv, snd_una));
+
+		nreno->search_snd_max_prev = CCV(ccv, snd_max);
 
 		/* Force cwnd to inflight */
 		CCV(ccv, snd_cwnd) = inflight;
 
+		log(LOG_INFO,
+			"<%p> SEARCH:[CCRG] DRAIN_APPLIED [now %lu] [inflight %u] [cwnd %u] [pre_snd_max %u]\n",
+			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_snd_max_prev);
+		
 		/* Check if drain completed */
 		if (CCV(ccv, snd_cwnd) <= nreno->search_targeted_cwnd) {
 
