@@ -656,6 +656,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 	uint32_t inflight = 0; // NEW_CHANGE
+	uint32_t mss = 0; // NEW_CHANGE
 
 	if (CCV(ccv, snd_cwnd) > CCV(ccv, snd_ssthresh))
     	return false;
@@ -737,10 +738,18 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 		mss = CCV(ccv, t_maxseg);
 
+		log(LOG_INFO,
+			"<%p> SEARCH:[CCRG] DRAIN_INIT [now %lu] [inflight %u] [old_cwnd %u] [target %lu]\n",
+			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_targeted_cwnd);	
+
 		CCV(ccv, snd_cwnd) = max(
         inflight > mss ? inflight - mss : mss,
         nreno->search_targeted_cwnd
     	);
+
+    	log(LOG_INFO,
+			"<%p> SEARCH:[CCRG] DRAIN_INIT_APPLIED [now %lu] [new_cwnd %u]\n",
+			ccv, now_us, CCV(ccv, snd_cwnd));
 
 		nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_DRAIN_INIT;
     	nreno->newreno_flags |= CC_NEWRENO_SEARCH_IN_DRAIN;
@@ -750,6 +759,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	if (nreno->newreno_flags & CC_NEWRENO_SEARCH_IN_DRAIN) {
 
 		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
+
+		log(LOG_INFO,
+			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cwnd_before %u] [target %lu]\n",
+			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_targeted_cwnd);
+	
 
 		/* Force cwnd to inflight */
 		CCV(ccv, snd_cwnd) = inflight;
