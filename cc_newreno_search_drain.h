@@ -77,6 +77,8 @@ struct newreno {
 	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
 	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
 	uint64_t search_targeted_cwnd;  // NEW_CHANGE
+	uint8_t search_cwnd_reduction_to_target;  // NEW_CHANGE
+
 };
  
 #undef  SEARCH_ACKED_BIN
@@ -84,15 +86,6 @@ struct newreno {
 
 #define SEARCH_ACKED_BIN(ccv, i) (((struct newreno*)(ccv)->cc_data)->search_acked_bin[(i)% SEARCH_ACKED_BINS])
 #define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[(i) % SEARCH_SENT_BINS])
-
-/* Flags values */ // NEW_CHANGE
-#define CC_NEWRENO_SEARCH_DRAIN_INIT 0x0100	/* SEARCH-triggered drain phase is initiate */
-#define CC_NEWRENO_SEARCH_IN_DRAIN	0x0200	/* SEARCH-triggered drain phase is active */
-
-#define SEARCH_CLEAR_DRAIN_FLAGS(nreno) do {                \
-    (nreno)->newreno_flags &= ~CC_NEWRENO_SEARCH_IN_DRAIN;  \
-    (nreno)->newreno_flags &= ~CC_NEWRENO_SEARCH_DRAIN_INIT;\
-} while (0)
 
 /* SEARCH_end */
 

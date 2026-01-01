@@ -152,7 +152,8 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_curr_idx = -1;
 	nreno->search_bin_end_us = 0;
 	nreno->search_scale_factor = 0;
-	nreno->search_targeted_cwnd = 0;	// NEW_CHANGE
+	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
+	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
@@ -274,7 +275,6 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	nreno->search_cumulative_acked_bytes = 0;
 	if (V_use_search){
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 	}
 	//#if defined(ACK_LOG_ENABLED)
 	log(LOG_INFO, "<%p> ACK:[CCRG]Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
@@ -420,12 +420,9 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 		if (passed_bins > SEARCH_WIN_BINS) {
 			search_reset(nreno, RESET_BIN_DURATION_TRUE);
-			SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		else {
 			search_reset(nreno, RESET_BIN_DURATION_FALSE);
-			SEARCH_CLEAR_DRAIN_FLAGS(nreno);
-
 		}
 		
 		log(LOG_INFO, "<%p> DEBUG:[CCRG] [now %lu] SEARCH reset due to the missed bins\n",
@@ -661,8 +658,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	if (CCV(ccv, snd_cwnd) > CCV(ccv, snd_ssthresh))
     	return false;
 
-	if (!(nreno->newreno_flags &
-      (CC_NEWRENO_SEARCH_IN_DRAIN | CC_NEWRENO_SEARCH_DRAIN_INIT))) { // NEW_CHANGE
+	if (nreno->search_cwnd_reduction_to_target == 0) { // NEW_CHANGE
 		/* by receiving the first ack packet, initialize bin duration and bin end time */
 		if (nreno->search_curr_idx < 0) {
 			search_init_bins(ccv, now_us, rtt_us);
@@ -727,49 +723,27 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					nreno->newreno_flags |= CC_NEWRENO_SEARCH_DRAIN_INIT;
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
+					nreno->search_cwnd_reduction_to_target = 1;
 					//return true;
 				}
 			}
 		}
 	}
 	/* SEARCH drain phase */
-	if (nreno->newreno_flags & CC_NEWRENO_SEARCH_DRAIN_INIT) {
+	if (nreno->search_cwnd_reduction_to_target > 0) {
 
 		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
-		mss = CCV(ccv, t_maxseg);
-
-		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] DRAIN_INIT [now %lu] [inflight %u] [old_cwnd %u] [target %lu]\n",
-			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_targeted_cwnd);	
 
 		CCV(ccv, snd_cwnd) = max(
-        inflight > mss ? inflight - mss : mss,
-        nreno->search_targeted_cwnd
-    	);
-
-    	log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] DRAIN_INIT_APPLIED [now %lu] [new_cwnd %u]\n",
-			ccv, now_us, CCV(ccv, snd_cwnd));
-
-		nreno->newreno_flags &= ~CC_NEWRENO_SEARCH_DRAIN_INIT;
-    	nreno->newreno_flags |= CC_NEWRENO_SEARCH_IN_DRAIN;
-    	return true;
-	}
-
-	if (nreno->newreno_flags & CC_NEWRENO_SEARCH_IN_DRAIN) {
-
-		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
+        inflight > ccv->bytes_this_ack ? inflight - ccv->bytes_this_ack : ccv->bytes_this_ack,
+        nreno->search_targeted_cwnd);
 
 		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cwnd_before %u] [target %lu]\n",
-			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_targeted_cwnd);
-	
-
-		/* Force cwnd to inflight */
-		CCV(ccv, snd_cwnd) = inflight - ccv->bytes_this_ack;
+			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
+			ccv, now_us, inflight, CCV(ccv, snd_cwnd), ccv->bytes_this_ack, nreno->search_targeted_cwnd);
 
 		/* Check if drain completed */
-		if (CCV(ccv, snd_cwnd) <= nreno->search_targeted_cwnd) {
+		if (CCV(ccv, snd_cwnd) == nreno->search_targeted_cwnd) {
 
 			search_log_exit_rate(ccv, nreno,
 				prev_idx,
@@ -778,8 +752,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 			CCV(ccv, snd_cwnd) = nreno->search_targeted_cwnd;
 			CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
-
-			SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 
 	        /* Fully exit SEARCH */
 	        search_reset(nreno, RESET_BIN_DURATION_TRUE);
@@ -842,7 +814,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	/* SEARCH_end */
 
 	//#if defined(ACK_LOG_ENABLED)
-	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [cur_bytes %u] [curack %u]  [cwnd %u] [ssthresh %u]\n",
+	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_bytes_acked %u] [curack %u]  [cwnd %u] [ssthresh %u]\n",
         ccv,
         now_us,
         rtt_us,
@@ -852,7 +824,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
         CCV(ccv, snd_ssthresh)
         );
 
-	log(LOG_INFO, "<%p> ACK:[CCRG] [mss %u] [total_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]\n",
+	log(LOG_INFO, "<%p> ACK:[CCRG] [mss %u] [cur_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]\n",
         ccv,
         CCV(ccv, t_maxseg),
         ccv->bytes_this_ack,
@@ -1052,7 +1024,6 @@ newreno_after_idle(struct cc_var *ccv)
 	log(LOG_INFO, "<%p> DEBUG:[CCRG] After idle [now %lu]\n", ccv, get_now_us()); 
 	//#endif
 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 	/* SEARCH_end */
 }
 
@@ -1099,7 +1070,6 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 			log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
 			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		 	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		/* SEARCH_end */
 
@@ -1128,7 +1098,6 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 			log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
 			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		 	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		/* SEARCH_end */
 
@@ -1151,7 +1120,6 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 			log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
 			//#endif
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		 	SEARCH_CLEAR_DRAIN_FLAGS(nreno);
 		}
 		/* SEARCH_end */
 		CCV(ccv, snd_ssthresh) = max(min(CCV(ccv, snd_wnd),
