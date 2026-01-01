@@ -653,7 +653,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 	uint32_t inflight = 0; // NEW_CHANGE
-	uint32_t mss = 0; // NEW_CHANGE
 
 	if (CCV(ccv, snd_cwnd) > CCV(ccv, snd_ssthresh))
     	return false;
