@@ -719,8 +719,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					//#endif
 
 					// NEW_CHANGE
-					/* Enter SEARCH drain instead of hard exit */
-					nreno->newreno_flags |= CC_NEWRENO_SEARCH_DRAIN_INIT;
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
 					nreno->search_cwnd_reduction_to_target = 1;
