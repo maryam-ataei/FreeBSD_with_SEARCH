@@ -766,7 +766,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	
 
 		/* Force cwnd to inflight */
-		CCV(ccv, snd_cwnd) = inflight;
+		CCV(ccv, snd_cwnd) = inflight - ccv->bytes_this_ack;
 
 		/* Check if drain completed */
 		if (CCV(ccv, snd_cwnd) <= nreno->search_targeted_cwnd) {
