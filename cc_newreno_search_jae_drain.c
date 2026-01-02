@@ -552,7 +552,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 	if (V_CWND_ROLLBACK) {
 
-		cong_idx = nreno->search_curr_idx - (((3 * rtt_us) / 2) / nreno->search_bin_duration_us);
+		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
 
 		if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
 
