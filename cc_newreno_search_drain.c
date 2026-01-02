@@ -559,8 +559,9 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
-			nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments);
-
+			//nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments);
+			nreno->search_targeted_cwnd = 1000000;
+			
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
 				" [cong_idx %u] [updated_cwnd %u] [search_targeted_cwnd %lu]\n", 
 				ccv,
