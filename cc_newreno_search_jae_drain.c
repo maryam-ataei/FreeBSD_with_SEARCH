@@ -725,6 +725,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					nreno->search_cwnd_reduction_target = 1;
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
+					nreno->search_snd_max_prev = CCV(ccv, snd_max);
+					return true;
 				}
 			}
 		}
@@ -769,7 +771,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				CCV(ccv, snd_ssthresh));
 			//#endif
 	    }
-	    //return true;
+	    return true;
 	}
 
 	#if defined(SEARCH_LOG_ENABLED)
