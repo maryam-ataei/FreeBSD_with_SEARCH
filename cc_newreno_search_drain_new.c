@@ -746,14 +746,15 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		new_cwnd = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
 		CCV(ccv, snd_cwnd) = new_cwnd;
-		CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
-
+		
 		log(LOG_INFO,
 			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
 			ccv, now_us, inflight, CCV(ccv, snd_cwnd), ccv->bytes_this_ack, nreno->search_targeted_cwnd);
 
 		/* Check if drain completed */
 		if (CCV(ccv, snd_cwnd) == nreno->search_targeted_cwnd) {
+
+			CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 
 			search_log_exit_rate(ccv, nreno,
 				prev_idx,
