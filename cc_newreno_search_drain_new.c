@@ -730,17 +730,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	/* SEARCH drain phase */
 	else {
 
-		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
-		uint32_t mss = CCV(ccv, t_maxseg);
-
-		/* drain_margin: how much you underfill the pipe */
-		uint32_t drain_margin = max(2*mss, inflight >> 5);   /* ~3% or at least 2 MSS */
-
+		inflight = CCV(ccv, snd_max) - ccv->curack;
+		
 		uint32_t new_cwnd;
-		if (inflight > drain_margin)
-		    new_cwnd = inflight - drain_margin;
-		else
-		    new_cwnd = mss;
+
+		new_cwnd = inflight;
 
 		/* never go below target while draining */
 		new_cwnd = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
