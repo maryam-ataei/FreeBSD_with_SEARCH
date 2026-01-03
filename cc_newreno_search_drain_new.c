@@ -770,7 +770,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				CCV(ccv, snd_cwnd), 
 				CCV(ccv, snd_ssthresh));
 			//#endif
-	    
+	    }
 	    return true;  /* exit triggered */
 	}
 
