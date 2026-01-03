@@ -94,7 +94,7 @@
 /*
  * SEARCH: Logging and debug macros
  */
-#define SEARCH_LOG_ENABLED
+//#define SEARCH_LOG_ENABLED
 #define HYSTARTPP_LOG_ENABLED
 #define ACK_LOG_ENABLED
 #define DEBUG_LOG_ENABLED
@@ -411,10 +411,10 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 	initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
-	//#if defined(SEARCH_LOG_ENABLED)
+	#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] Update bins: [passed_bins %d] [initial_rtt %lu]\n", 
 	ccv, now_us, passed_bins, initial_rtt);
-	//#endif
+	#endif
 
 	/* Need reset due to missed bins */
 	if (passed_bins > SEARCH_ALPHA * (initial_rtt / nreno->search_bin_duration_us)) {
@@ -458,21 +458,21 @@ search_update_bins(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	SEARCH_ACKED_BIN(ccv, nreno->search_curr_idx) = (search_bin_t)acked_val;
 	SEARCH_SENT_BIN(ccv,  nreno->search_curr_idx) = (search_bin_t)sent_val;
 
-	//#if defined(SEARCH_LOG_ENABLED)
+	#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, " SEARCH:[CCRG] SEARCH SENT BINS: " );
 	for (int i = 0; i < SEARCH_SENT_BINS; i++) {
 		log(LOG_INFO, "| %u ", nreno->search_sent_bin[i]);
 	}
 	log(LOG_INFO, "|\n");
-	//#endif
+	#endif
 
-	//#if defined(SEARCH_LOG_ENABLED)
+	#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, "SEARCH:[CCRG] SEARCH ACKED BINS: ");
 	for (int i = 0; i < SEARCH_ACKED_BINS; i++) {
 		log(LOG_INFO, "| %u ", nreno->search_acked_bin[i]);
 	}
 	log(LOG_INFO, "|\n");
-	//#endif
+	#endif
 }
 
 /*
@@ -702,7 +702,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				/* check for exit condition */
 				if (prev_sent_bytes >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
 
-					//#if defined(SEARCH_LOG_ENABLED)
+					#if defined(SEARCH_LOG_ENABLED)
 					log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
 						"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
 						"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
@@ -718,7 +718,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 						prev_idx,
 						fraction
 						);
-					//#endif
+					#endif
 
 					// NEW_CHANGE
 					/* Enter SEARCH drain instead of hard exit */
@@ -772,7 +772,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	    //return true;
 	}
 
-	//#if defined(SEARCH_LOG_ENABLED)
+	#if defined(SEARCH_LOG_ENABLED)
 	log(LOG_INFO, "<%p> SEARCH:[CCRG][now %lu] [bin_duration %d] "
 		"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
 		"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u] [in_flight %u]\n",
@@ -789,7 +789,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		fraction,
 		inflight
 		);
-	//#endif
+	#endif
 
 	return false;
 }
@@ -823,7 +823,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
         ccv,
         now_us,
         rtt_us,
-        nreno->search_cumulative_acked_bytes,
+        ccv->bytes_this_ack,
         ccv->curack,
         CCV(ccv, snd_cwnd),
         CCV(ccv, snd_ssthresh)
@@ -832,7 +832,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	log(LOG_INFO, "<%p> ACK:[CCRG] [mss %u] [total_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]\n",
         ccv,
         CCV(ccv, t_maxseg),
-        ccv->bytes_this_ack,
+        nreno->search_cumulative_acked_bytes,
         CCV(ccv, t_sndbytes),
         (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0
         );
@@ -845,8 +845,8 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
 	uint32_t snwd = CCV(ccv, snd_wnd);
 
-	log(LOG_INFO, "<%p> DEBUG:[CCRG] [cwnd %u] [inflight %u] [rwnd %u] [snwd %u] [cwnd_limited %d]\n",
-           ccv, cwnd, inflight, rwnd, snwd, (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0);
+	log(LOG_INFO, "<%p> DEBUG:[CCRG] [cwnd %u] [real_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
+           ccv, cwnd, inflight, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
 	//#endif
 	
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
