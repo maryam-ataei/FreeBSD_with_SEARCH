@@ -552,7 +552,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 	if (V_CWND_ROLLBACK) {
 
-		cong_idx = nreno->search_curr_idx - ((2 * rtt_us) / nreno->search_bin_duration_us);
+		cong_idx = nreno->search_curr_idx - ((1.7 * rtt_us) / nreno->search_bin_duration_us);
 
 		if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
 
@@ -725,7 +725,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					nreno->search_cwnd_reduction_target = 1;
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
-					// return true;
+					nreno->search_snd_max_prev = CCV(ccv, snd_max);
+					return true;
 				}
 			}
 		}
@@ -771,7 +772,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				CCV(ccv, snd_ssthresh));
 			//#endif
 	    }
-	    return true;  /* exit triggered */
+	    return true;
 	}
 
 	//#if defined(SEARCH_LOG_ENABLED)
