@@ -722,13 +722,13 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
 					nreno->search_cwnd_reduction_to_target = 1;
-					//return true;
+					return true;
 				}
 			}
 		}
 	}
 	/* SEARCH drain phase */
-	if (nreno->search_cwnd_reduction_to_target > 0) {
+	else {
 
 		inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
 		uint32_t mss = CCV(ccv, t_maxseg);
