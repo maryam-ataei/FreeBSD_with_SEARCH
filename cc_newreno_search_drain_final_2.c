@@ -156,6 +156,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_snd_max_prev = 0;				// NEW_CHANGE
 	nreno->search_cwnd_reduction_target = 0;	// NEW_CHANGE 
 	nreno->search_drain_k = 0;					// NEW_CHANGE
+	nreno->search_drain_acked_segs = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
@@ -659,6 +660,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	uint32_t fraction = 0;
 	uint32_t inflight = 0;	// NEW_CHANGE
 	uint32_t mss = 0;		// NEW_CHANGE
+	uint32_t real_inflight = 0;
+	u_int i;
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);	// NEW_CHANGE
 
@@ -741,11 +744,16 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 	else {
 
-		if (SEQ_GT(CCV(ccv, snd_max), ccv->curack)) {
-		    inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), ccv->curack);
+		if (SEQ_GT(search_snd_max_prev, CCV(ccv, snd_una))) {
+		    inflight = (uint32_t)SEQ_SUB(search_snd_max_prev, CCV(ccv, snd_una));
 		} else {
 		    inflight = 0;
 		}
+
+		if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
+    		real_inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
+    	else
+    		real_inflight = 0;
 
 		log(LOG_INFO,
 			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cwnd_before %u] [target %lu] [pre_snd_max %u] [snd_max %u] [snd_una %u]\n",
@@ -753,12 +761,24 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 		nreno->search_snd_max_prev = CCV(ccv, snd_max);
 
-		/* x = headroom bytes allowed during drain */
 		if (nreno->search_drain_k == 0) 
-			nreno->search_drain_k = 4;  /* default BDP/4 */
+			nreno->search_drain_k = 4;
 
-		/* allow limited replacement sending */
-		uint32_t new_cwnd = inflight + max(nreno->search_targeted_cwnd / nreno->search_drain_k, 4U * mss);
+		if (nreno->search_drain_acked_segs < nreno->search_drain_k) {
+
+			i = ccv->bytes_this_ack / mss;
+
+			nreno->search_drain_acked_segs += i;
+
+			uint32_t new_cwnd = real_inflight;
+
+		}
+
+		else {
+			/* allow limited replacement sending */
+			uint32_t new_cwnd = inflight;
+		}
+
 
 		/* Force cwnd to inflight or target cwnd, never go below target while draining */
 		CCV(ccv, snd_cwnd) = max((uint32_t)new_cwnd, (uint32_t)nreno->search_targeted_cwnd);

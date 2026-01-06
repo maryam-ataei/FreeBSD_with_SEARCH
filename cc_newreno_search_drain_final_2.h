@@ -79,7 +79,8 @@ struct newreno {
 	uint64_t search_targeted_cwnd;  // NEW_CHANGE
 	uint32_t search_snd_max_prev;  // NEW_CHANGE 
 	uint8_t search_cwnd_reduction_target;  // NEW_CHANGE
-	uint8_t search_drain_k;  // NEW_CHANGE 
+	uint8_t search_drain_k;  // NEW_CHANGE
+	uint32_t search_drain_acked_segs;	// NEW_CHANGE 
 };
  
 #undef  SEARCH_ACKED_BIN
