@@ -764,8 +764,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		CCV(ccv, snd_cwnd) = max((uint32_t)new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
 		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] DRAIN_APPLIED [now %lu] [inflight %u] [cwnd %u] [pre_snd_max %u] [ x %u]\n",
-			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_snd_max_prev, x);
+			"<%p> SEARCH:[CCRG] DRAIN_APPLIED [now %lu] [inflight %u] [cwnd %u] [pre_snd_max %u]\n",
+			ccv, now_us, inflight, CCV(ccv, snd_cwnd), nreno->search_snd_max_prev);
 		
 		/* Check if drain completed */
 		if (CCV(ccv, snd_cwnd) == (uint32_t)nreno->search_targeted_cwnd) {
