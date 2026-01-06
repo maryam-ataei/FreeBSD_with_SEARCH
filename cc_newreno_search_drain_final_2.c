@@ -826,7 +826,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	/* SEARCH_begin */
 	uint64_t now_us = 0;
 	uint64_t rtt_us = 0;
-	uint32_t inflight = 0;
+	uint32_t infl_dbg = 0;
 
 	now_us = get_now_us();
 
