@@ -753,8 +753,9 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 		if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
     		real_inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
-    	else
+    	else {
     		real_inflight = 0;
+    	}
 
 		log(LOG_INFO,
 			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cwnd_before %u] [target %lu] [pre_snd_max %u] [snd_max %u] [snd_una %u]\n",
