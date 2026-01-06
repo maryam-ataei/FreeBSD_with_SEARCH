@@ -276,8 +276,8 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	if (V_use_search){
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 	}
-	//#if defined(ACK_LOG_ENABLED)
-	log(LOG_INFO, "<%p> ACK:[CCRG]Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
+	//#if defined(DEBUG_LOG_ENABLED)
+	log(LOG_INFO, "<%p> DEBUG:[CCRG]Connection initiated [now %lu] [initial_cwnd %u] [initial_ssthresh %u]\n", 
 	ccv, get_now_us(), CCV(ccv, snd_cwnd), CCV(ccv, snd_ssthresh)); 
 	//#endif
 	/* SEARCH_end */

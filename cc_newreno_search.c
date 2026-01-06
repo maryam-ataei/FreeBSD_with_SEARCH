@@ -528,6 +528,7 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 	int32_t cong_idx = 0;
 	uint32_t overshoot_cwnd = 0;
 	uint32_t overshoot_cwnd_rescaled = 0;
+	uint mss = 0;
 
 	/*
 	* If cwnd rollback is enabled, the code calculates the current round-trip time (RTT)
@@ -559,6 +560,8 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 
 			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
+			mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
+
 
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [cwnd rollback [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
 				" [cong_idx %u] [updated_cwnd %u]\n", 
@@ -568,7 +571,7 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 				overshoot_cwnd,
 				overshoot_cwnd_rescaled,
 				cong_idx,
-				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments));
+				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss)));
 
 		/*
 		* Reduce the current congestion window,
@@ -576,9 +579,9 @@ search_exit_slow_start(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us) {
 		* or is not larger than the current cwnd (in case of TCP reset)
 		*/
 		if (overshoot_cwnd_rescaled < CCV(ccv, snd_cwnd))
-			CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments);
+			CCV(ccv, snd_cwnd) = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
 		else 
-			CCV(ccv, snd_cwnd) = V_tcp_initcwnd_segments;
+			CCV(ccv, snd_cwnd) = (V_tcp_initcwnd_segments * mss);
 		}
 		else 
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] cong_idx is too small for rollback [cong_idx %u] \n", ccv, now_us, cong_idx); 
