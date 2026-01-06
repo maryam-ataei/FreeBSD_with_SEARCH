@@ -662,6 +662,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	uint32_t mss = 0;		// NEW_CHANGE
 	uint32_t real_inflight = 0;
 	u_int i;
+	uint32_t new_cwnd = 0;
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);	// NEW_CHANGE
 
@@ -770,13 +771,14 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 			nreno->search_drain_acked_segs += i;
 
-			uint32_t new_cwnd = real_inflight;
+			new_cwnd = real_inflight;
 
 		}
 
 		else {
 			/* allow limited replacement sending */
-			uint32_t new_cwnd = inflight;
+			new_cwnd = inflight;
+			i = 0;
 		}
 
 
