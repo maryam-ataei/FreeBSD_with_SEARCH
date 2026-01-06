@@ -746,9 +746,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	else {
 
 		if (SEQ_GT(nreno->search_snd_max_prev, CCV(ccv, snd_una))) {
-		inflight = (uint32_t)SEQ_SUB(nreno->search_snd_max_prev, CCV(ccv, snd_una));
-
-
+			inflight = (uint32_t)SEQ_SUB(nreno->search_snd_max_prev, CCV(ccv, snd_una));
+		}
+		else {
+			inflight = 0;
+		}
 		if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
     		real_inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
     	else {
