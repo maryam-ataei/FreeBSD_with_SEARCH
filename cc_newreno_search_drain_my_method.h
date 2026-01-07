@@ -76,8 +76,8 @@ struct newreno {
 	search_bin_t search_sent_bin[SEARCH_SENT_BINS];	/* array to keep sent bytes for bins */
 	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
 	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
-	uint64_t search_targeted_cwnd;  // NEW_CHANGE
-	uint8_t search_cwnd_reduction_to_target;  // NEW_CHANGE
+	uint64_t search_targeted_cwnd;  			// NEW_CHANGE
+	uint8_t search_cwnd_reduction_to_target; 	// NEW_CHANGE
 
 };
  

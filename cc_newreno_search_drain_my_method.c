@@ -528,6 +528,9 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 	int32_t cong_idx = 0;
 	uint32_t overshoot_cwnd = 0;
 	uint32_t overshoot_cwnd_rescaled = 0;
+	uint mss = 0;
+
+	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
 	
 	/*
 	* If cwnd rollback is enabled, the code calculates the current round-trip time (RTT)
@@ -559,7 +562,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
-			//nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments);
+			//nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
 			nreno->search_targeted_cwnd = 1000000;
 			
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
@@ -570,7 +573,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 				overshoot_cwnd,
 				overshoot_cwnd_rescaled,
 				cong_idx,
-				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments),
+				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss)),
 				nreno->search_targeted_cwnd);
 		}
 		else 
@@ -731,16 +734,12 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	/* SEARCH drain phase */
 	else {
 
-		inflight = CCV(ccv, snd_max) - ccv->curack;
-		
-		uint32_t new_cwnd;
-
-		new_cwnd = inflight;
+		if (SEQ_GEQ(CCV(ccv, snd_max), ccv->curack)) {
+			inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), ccv->curack);
+		}
 
 		/* never go below target while draining */
-		new_cwnd = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
-
-		CCV(ccv, snd_cwnd) = new_cwnd;
+		CCV(ccv, snd_cwnd) = max(inflight, (uint32_t)nreno->search_targeted_cwnd);
 		
 		log(LOG_INFO,
 			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
@@ -803,7 +802,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	/* SEARCH_begin */
 	uint64_t now_us = 0;
 	uint64_t rtt_us = 0;
-	uint32_t inflight = 0;
+	uint32_t infl_dbg = 0;
 
 	now_us = get_now_us();
 
@@ -837,13 +836,14 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
   	#endif
 
 	#if defined(DEBUG_LOG_ENABLED)
-	inflight = CCV(ccv, snd_max) - CCV(ccv, snd_una);
+	if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
+    	infl_dbg = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
 	uint32_t snwd = CCV(ccv, snd_wnd);
 
 	log(LOG_INFO, "<%p> DEBUG:[CCRG] [cwnd %u] [in_ackrecieved_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
-           ccv, cwnd, inflight, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
+           ccv, cwnd, infl_dbg, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
 	#endif
 	
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
@@ -918,7 +918,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 			/* SEARCH_begin */
 			if (V_use_hystartpp) {
-
+			/* SEARCH_end */
 				#if defined(HYSTARTPP_LOG_ENABLED)
 				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] Update HyStartPP in slow start\n", ccv, now_us); 
 				#endif
@@ -969,8 +969,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					}
 				}
 			}
-			/* SEARCH_end */
-
+			
 			if (CCV(ccv, snd_nxt) == CCV(ccv, snd_max))
 				incr = min(ccv->bytes_this_ack,
 				    ccv->nsegs * abc_val *

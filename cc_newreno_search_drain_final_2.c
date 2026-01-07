@@ -766,7 +766,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		if (nreno->search_drain_k == 0) 
 			nreno->search_drain_k = 4;
 
-		if (nreno->search_drain_acked_segs < nreno->search_drain_k) {
+		if (nreno->search_drain_acked_segs <= nreno->search_drain_k) {
 
 			i = ccv->bytes_this_ack / mss;
 

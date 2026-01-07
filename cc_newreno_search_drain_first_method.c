@@ -528,6 +528,9 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 	int32_t cong_idx = 0;
 	uint32_t overshoot_cwnd = 0;
 	uint32_t overshoot_cwnd_rescaled = 0;
+	uint mss = 0;
+
+	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
 	
 	/*
 	* If cwnd rollback is enabled, the code calculates the current round-trip time (RTT)
@@ -559,7 +562,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
-			//nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments);
+			//nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
 			nreno->search_targeted_cwnd = 1000000;
 			
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
@@ -570,7 +573,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 				overshoot_cwnd,
 				overshoot_cwnd_rescaled,
 				cong_idx,
-				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, V_tcp_initcwnd_segments),
+				max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss)),
 				nreno->search_targeted_cwnd);
 		}
 		else 
