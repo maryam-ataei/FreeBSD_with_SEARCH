@@ -78,7 +78,7 @@ struct newreno {
 	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
 	uint64_t search_targeted_cwnd;  			// NEW_CHANGE
 	uint8_t search_cwnd_reduction_to_target; 	// NEW_CHANGE
-	bool search_drain_subtract_mss;
+	bool search_drain_subtract;
 
 
 };
