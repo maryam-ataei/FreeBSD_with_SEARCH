@@ -154,7 +154,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
-	nreno->search_drain_subtract = true; 
+	nreno->search_drain_add = true; 
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
@@ -730,7 +730,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
 					nreno->search_cwnd_reduction_to_target = 1;
-					nreno->search_drain_subtract = false;  // first drain ACK subtracts MSS
+					nreno->search_drain_add = false; 
 					return true;
 				}
 			}
@@ -745,16 +745,16 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 		uint32_t new_cwnd;
 
-		if (nreno->search_drain_subtract) {
-		    /* subtract MSS on alternating ACKs */
-		    new_cwnd = (inflight > mss) ? (inflight - mss) : 0;
+		if (nreno->search_drain_add) {
+		    /* add MSS on alternating ACKs */
+		    new_cwnd = inflight + mss;
 		} else {
-		    /* first ACK (and every other) does NOT subtract */
+		    /* first ACK (and every other) does NOT add */
 		    new_cwnd = inflight;
 		}
 
 		/* flip for next ACK: false->true->false->true... */
-		nreno->search_drain_subtract = !nreno->search_drain_subtract;
+		nreno->search_drain_add = !nreno->search_drain_add;
 
 		/* never go below target while draining */
 		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
