@@ -531,7 +531,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 	int32_t cong_idx = 0;
 	uint32_t overshoot_cwnd = 0;
 	uint32_t overshoot_cwnd_rescaled = 0;
-	uint mss = 0;
+	u_int mss = 0;
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
 	
