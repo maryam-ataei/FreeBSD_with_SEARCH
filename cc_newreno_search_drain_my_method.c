@@ -739,11 +739,28 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		}
 
 		/* never go below target while draining */
-		CCV(ccv, snd_cwnd) = max(inflight, (uint32_t)nreno->search_targeted_cwnd);
+		CCV(ccv, snd_cwnd) = max(inflight-mss, (uint32_t)nreno->search_targeted_cwnd);
 		
 		log(LOG_INFO,
 			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
 			ccv, now_us, inflight, CCV(ccv, snd_cwnd), ccv->bytes_this_ack, nreno->search_targeted_cwnd);
+
+		log(LOG_INFO, "<%p> SEARCH:[CCRG][now %lu] [bin_duration %d] "
+			"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
+			"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u] [in_flight %u]\n",
+			ccv,
+			now_us, 
+			nreno->search_bin_duration_us, 
+			nreno->search_bin_end_us, 
+			curr_delv_bytes,
+			prev_sent_bytes,
+			norm_diff,
+			nreno->search_scale_factor,
+			nreno->search_curr_idx,
+			prev_idx,
+			fraction,
+			inflight
+			);
 
 		/* Check if drain completed */
 		if (CCV(ccv, snd_cwnd) == nreno->search_targeted_cwnd) {
