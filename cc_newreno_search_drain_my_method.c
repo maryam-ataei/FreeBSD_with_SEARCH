@@ -155,7 +155,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
 	nreno->search_drain_period = 3;				// NEW_CHANGE
-	nreno->search_drain_seg_mod = 0;			// NEW_CHANGE
+	nreno->search_drain_seg = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
@@ -659,6 +659,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	int32_t norm_diff = 0; 
 	uint32_t fraction = 0;
 	uint32_t inflight = 0; // NEW_CHANGE
+	uint32_t new_cwnd = 0; // NEW_CHANGE
 	uint32_t mss = 0;
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
@@ -743,18 +744,30 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 			inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), ccv->curack);
 		}
 
-		uint32_t segs_acked = (ccv->bytes_this_ack + mss - 1) / mss;   /* ceil */
-		if (segs_acked == 0)
-		    segs_acked = 1;  /* optional: treat small ack as 1 */
+		/* "packet count" using ceil, per callback */
+		uint32_t segs_acked = 0;
+		if (ccv->bytes_this_ack > 0)
+		    segs_acked = (ccv->bytes_this_ack + mss - 1) / mss;  /* ceil */
 
-		nreno->search_drain_seg_mod = (nreno->search_drain_seg_mod + segs_acked) % nreno->search_drain_period;
+		nreno->search_drain_seg += segs_acked;
 
-		bool do_add = (nreno->search_drain_seg_mod == 0); /* every N segments */
-		uint32_t new_cwnd = inflight + (do_add ? mss : 0);
+		if (nreno->search_drain_period == 0)
+		    nreno->search_drain_period = 1;  /* defensive */
+
+		uint32_t adds = 0;
+		if (nreno->search_drain_seg >= nreno->search_drain_period) {
+		    adds = nreno->search_drain_seg / nreno->search_drain_period; /* 0,1,2... */
+		    nreno->search_drain_seg %= nreno->search_drain_period;
+		}
+
+		new_cwnd = inflight + adds * mss;
+
+		/* never go below target while draining */
+		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
 		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [search_drain_seg_mod %u] [search_drain_period %u] \n",
-			ccv, now_us, segs_acked, nreno->search_drain_seg_mod, nreno->search_drain_period);
+			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [search_drain_seg %u] [search_drain_period %u] [adds %u] \n",
+			ccv, now_us, segs_acked, nreno->search_drain_seg, nreno->search_drain_period, adds);
 
 
 		/* never go below target while draining */
