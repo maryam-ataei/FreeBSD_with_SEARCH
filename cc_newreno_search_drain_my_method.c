@@ -154,7 +154,8 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
-	nreno->search_drain_add = true; 
+	nreno->search_drain_period = 3;				// NEW_CHANGE
+	nreno->search_drain_seg_mod = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
@@ -730,7 +731,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
 					nreno->search_cwnd_reduction_to_target = 1;
-					nreno->search_drain_add = false; 
 					return true;
 				}
 			}
@@ -743,18 +743,19 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 			inflight = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), ccv->curack);
 		}
 
-		uint32_t new_cwnd;
+		uint32_t segs_acked = (ccv->bytes_this_ack + mss - 1) / mss;   /* ceil */
+		if (segs_acked == 0)
+		    segs_acked = 1;  /* optional: treat small ack as 1 */
 
-		if (nreno->search_drain_add) {
-		    /* add MSS on alternating ACKs */
-		    new_cwnd = inflight + mss;
-		} else {
-		    /* first ACK (and every other) does NOT add */
-		    new_cwnd = inflight;
-		}
+		nreno->search_drain_seg_mod = (nreno->search_drain_seg_mod + segs_acked) % nreno->search_drain_period;
 
-		/* flip for next ACK: false->true->false->true... */
-		nreno->search_drain_add = !nreno->search_drain_add;
+		bool do_add = (nreno->search_drain_seg_mod == 0); /* every N segments */
+		uint32_t new_cwnd = inflight + (do_add ? mss : 0);
+
+		log(LOG_INFO,
+			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [search_drain_seg_mod %u] [search_drain_period %u] \n",
+			ccv, now_us, segs_acked, nreno->search_drain_seg_mod, nreno->search_drain_period);
+
 
 		/* never go below target while draining */
 		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
