@@ -154,7 +154,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
-	nreno->search_drain_period = 15;				// NEW_CHANGE
+	nreno->search_drain_ackedseg_thresh = 15;				// NEW_CHANGE
 	nreno->search_drain_seg = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
@@ -753,8 +753,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 		uint32_t adds = 0;
 		if (nreno->search_drain_ackedseg >= nreno->search_drain_ackedseg_thresh) {
-		    adds = nreno->search_drain_seg / nreno->search_drain_period; /* 1,2... */
-		    nreno->search_drain_seg %= nreno->search_drain_period;
+		    adds = nreno->search_drain_seg / nreno->search_drain_ackedseg_thresh; /* 1,2... */
+		    nreno->search_drain_seg %= nreno->search_drain_ackedseg_thresh;
 		}
 
 		new_cwnd = inflight + adds * mss;
@@ -763,8 +763,8 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
 		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [search_drain_seg %u] [search_drain_period %u] [adds %u] \n",
-			ccv, now_us, segs_acked, nreno->search_drain_seg, nreno->search_drain_period, adds);
+			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [search_drain_seg %u] [search_drain_ackedseg_thresh %u] [adds %u] \n",
+			ccv, now_us, segs_acked, nreno->search_drain_seg, nreno->search_drain_ackedseg_thresh, adds);
 
 
 		log(LOG_INFO,
