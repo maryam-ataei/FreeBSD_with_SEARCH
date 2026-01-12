@@ -154,7 +154,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
-	nreno->search_drain_period = 3;				// NEW_CHANGE
+	nreno->search_drain_period = 15;				// NEW_CHANGE
 	nreno->search_drain_seg = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
@@ -564,8 +564,8 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
-			//nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
-			nreno->search_targeted_cwnd = 1000000;
+			nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
+			//nreno->search_targeted_cwnd = 1000000;
 			
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
 				" [cong_idx %u] [updated_cwnd %u] [search_targeted_cwnd %lu]\n", 
@@ -749,14 +749,11 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		if (ccv->bytes_this_ack > 0)
 		    segs_acked = (ccv->bytes_this_ack + mss - 1) / mss;  /* ceil */
 
-		nreno->search_drain_seg += segs_acked;
-
-		if (nreno->search_drain_period == 0)
-		    nreno->search_drain_period = 1;  /* defensive */
+		nreno->search_drain_ackedseg += segs_acked;
 
 		uint32_t adds = 0;
-		if (nreno->search_drain_seg >= nreno->search_drain_period) {
-		    adds = nreno->search_drain_seg / nreno->search_drain_period; /* 0,1,2... */
+		if (nreno->search_drain_ackedseg >= nreno->search_drain_ackedseg_thresh) {
+		    adds = nreno->search_drain_seg / nreno->search_drain_period; /* 1,2... */
 		    nreno->search_drain_seg %= nreno->search_drain_period;
 		}
 
@@ -769,9 +766,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [search_drain_seg %u] [search_drain_period %u] [adds %u] \n",
 			ccv, now_us, segs_acked, nreno->search_drain_seg, nreno->search_drain_period, adds);
 
-
-		/* never go below target while draining */
-		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
 		log(LOG_INFO,
 			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
