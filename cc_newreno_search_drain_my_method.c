@@ -950,14 +950,17 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 			/* SEARCH_begin */
 			if (V_use_hystartpp) {
+				#if defined(HYSTARTPP_LOG_ENABLED)
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyPP_flag %u] [ccv_flag %u]\n", 
+						ccv, now_us, nreno->newreno_flags, ccv->flags); 
+				#endif	
 			/* SEARCH_end */
 				if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
 					(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
 					#if defined(HYSTARTPP_LOG_ENABLED)
-					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [HyPP_flag %u]"
-						" [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [HyPP_flag %u] [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
 						ccv, now_us, nreno->newreno_flags, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
 					#endif
 					/*
