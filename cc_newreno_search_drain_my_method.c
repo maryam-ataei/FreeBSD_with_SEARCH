@@ -1357,6 +1357,9 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_IN_CSS;
 		newreno_log_hystart_event(ccv, nreno, 8, nreno->css_baseline_minrtt);
 		nreno->css_baseline_minrtt = 0xffffffff;
+		#if defined(HYSTARTPP_LOG_ENABLED)
+		log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP back to the SS from CSS [now %lu]\n", ccv, get_now_us());
+		#endif
 	}
 	if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)
 		newreno_log_hystart_event(ccv, nreno, 5, usec_rtt);
