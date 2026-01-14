@@ -916,10 +916,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 				nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 				newreno_log_hystart_event(ccv, nreno, 11, CCV(ccv, snd_ssthresh));
 
-				#if defined(HYSTARTPP_LOG_ENABLED)
+				//#if defined(HYSTARTPP_LOG_ENABLED)
 				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP exits [HyPP_flag %u]\n", 
 					ccv, now_us, nreno->newreno_flags); 
-				#endif
+				//#endif
 
 			}
 			if (V_tcp_do_rfc3465) {
@@ -955,11 +955,11 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
-					#if defined(HYSTARTPP_LOG_ENABLED)
+					//#if defined(HYSTARTPP_LOG_ENABLED)
 					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [HyPP_flag %u]"
 						" [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
 						ccv, now_us, nreno->newreno_flags, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
-					#endif
+					//#endif
 					/*
 					 * Hystart is allowed and still enabled and we are not yet
 					 * in CSS. Lets check to see if we can make a decision on
@@ -973,10 +973,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 						/* Clamp (minrtt_thresh, lastround/8, maxrtt_thresh) */
 						rtt_thresh = (nreno->css_lastround_minrtt >> 3);
 
-						#if defined(HYSTARTPP_LOG_ENABLED)
+						//#if defined(HYSTARTPP_LOG_ENABLED)
 						log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [rtt_thresh %u] [min_thresh %u] [max_thresh %u]\n", 
 							ccv, now_us, rtt_thresh, hystart_minrtt_thresh, hystart_maxrtt_thresh); 
-						#endif
+						//#endif
 
 						if (rtt_thresh < hystart_minrtt_thresh)
 							rtt_thresh = hystart_minrtt_thresh;
@@ -986,9 +986,9 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 						newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
 						if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
 
-							#if defined(HYSTARTPP_LOG_ENABLED)
+							//#if defined(HYSTARTPP_LOG_ENABLED)
 							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in CSS\n", ccv, now_us); 
-							#endif
+							//#endif
 
 							/* Enter CSS */
 							nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
@@ -1004,11 +1004,11 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 							nreno->css_entered_at_round = nreno->css_current_round;
 							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
 
-							#if defined(HYSTARTPP_LOG_ENABLED)
+							//#if defined(HYSTARTPP_LOG_ENABLED)
 							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] "
 								"[css_entered_at_round %u]\n", 
 								ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
-							#endif							
+							//#endif							
 						}
 					}
 				}
@@ -1028,10 +1028,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					incr /= hystart_css_growth_div;
 				/* SEARCH_end */
 
-				#if defined(HYSTARTPP_LOG_ENABLED)
+				//#if defined(HYSTARTPP_LOG_ENABLED)
 				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [incr %u]\n", 
 					ccv, now_us, incr); 
-				#endif	
+				//#endif	
 
 				newreno_log_hystart_event(ccv, nreno, 3, incr);
 			}
@@ -1262,12 +1262,12 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_rttsample_count = 0;
 	nreno->css_current_round = round_cnt;
 
-	#if defined(HYSTARTPP_LOG_ENABLED)
+	//#if defined(HYSTARTPP_LOG_ENABLED)
 	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
 		"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
 		ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
 		nreno->css_rttsample_count, nreno->css_current_round);
-	#endif
+	//#endif
 
 	if ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) &&
 	    ((round_cnt - nreno->css_entered_at_round) >= hystart_css_rounds)) {
@@ -1283,31 +1283,31 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 				/* SEARCH_begin */ //Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
 			 	if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = ((nreno->css_lowrtt_fas + nreno->css_fas_at_css_entry) / 2);
-					#if defined(HYSTARTPP_LOG_ENABLED)
+					//#if defined(HYSTARTPP_LOG_ENABLED)
 					log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[1] [now %lu]\n", ccv, get_now_us());
-					#endif
+					//#endif
 			 	}
 			} else {
 				if (V_use_hystartpp){
 					CCV(ccv, snd_ssthresh) = nreno->css_lowrtt_fas;
-					#if defined(HYSTARTPP_LOG_ENABLED)
+					//#if defined(HYSTARTPP_LOG_ENABLED)
 					log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[2] [now %lu]\n", ccv, get_now_us()); 
-					#endif
+					//#endif
 				}
 			}
 			if (V_use_hystartpp){
 				CCV(ccv, snd_cwnd) = nreno->css_fas_at_css_entry;
-				#if defined(HYSTARTPP_LOG_ENABLED)
+				//#if defined(HYSTARTPP_LOG_ENABLED)
 				log(LOG_INFO, "<%p> HyStartPP:[CCRG] cwnd is set by HyStartPP [now %lu]\n", ccv, get_now_us());
-				#endif
+				//#endif
 			}
 			nreno->css_entered_at_round = round_cnt;
 		} else {
 			if (V_use_hystartpp){
 				CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
-				#if defined(HYSTARTPP_LOG_ENABLED)
+				//#if defined(HYSTARTPP_LOG_ENABLED)
 				log(LOG_INFO, "<%p> HyStartPP:[CCRG] ssthresh is set by HyStartPP[3] [now %lu]\n", ccv, get_now_us());
-				#endif
+				//#endif
 			}
 			/* SEARCH_end */
 
