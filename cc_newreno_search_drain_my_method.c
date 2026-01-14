@@ -555,7 +555,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 	if (V_CWND_ROLLBACK) {
 
-		cong_idx = nreno->search_curr_idx - (((3 * rtt_us) / 2) / nreno->search_bin_duration_us);
+		cong_idx = nreno->search_curr_idx - 3;
 
 		if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
 
@@ -564,7 +564,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
-			nreno->search_targeted_cwnd = max(CCV(ccv, snd_cwnd) - overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
+			nreno->search_targeted_cwnd = max(overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
 			//nreno->search_targeted_cwnd = 1000000;
 			
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [curr_cwnd %u] [overshoot_cwnd %u] [overshoot_cwnd_rescaled %u]" 
