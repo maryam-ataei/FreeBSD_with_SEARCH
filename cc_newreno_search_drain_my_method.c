@@ -956,8 +956,8 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
 					#if defined(HYSTARTPP_LOG_ENABLED)
-					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [HyPP_flag %u] [rtt_sample_count %u] [cur_round_min_rtt %u]
-						[last_round_min_rtt %u]\n", 
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [HyPP_flag %u]"
+						" [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
 						ccv, now_us, nreno->newreno_flags, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
 					#endif
 					/*
@@ -1005,7 +1005,8 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
 
 							#if defined(HYSTARTPP_LOG_ENABLED)
-							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] [css_entered_at_round %u]\n", 
+							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] "
+								"[css_entered_at_round %u]\n", 
 								ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
 							#endif							
 						}
@@ -1262,8 +1263,9 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_current_round = round_cnt;
 
 	#if defined(HYSTARTPP_LOG_ENABLED)
-	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] [css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u]
-		[css_cur_round %u]\n", ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
+	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
+		"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
+		ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
 		nreno->css_rttsample_count, nreno->css_current_round);
 	#endif
 
