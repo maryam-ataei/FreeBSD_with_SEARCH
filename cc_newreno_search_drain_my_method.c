@@ -863,7 +863,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
 	uint32_t snwd = CCV(ccv, snd_wnd);
 
-	log(LOG_INFO, "<%p> DEBUG:[CCRG] [now_debug %u][cwnd %u] [in_ackrecieved_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
+	log(LOG_INFO, "<%p> DEBUG:[CCRG] [now_debug %lu][cwnd %u] [in_ackrecieved_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
            ccv, now_us, cwnd, infl_dbg, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
 	#endif
 	
