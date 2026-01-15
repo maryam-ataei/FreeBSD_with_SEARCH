@@ -154,7 +154,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
-	nreno->search_drain_ackedseg_thresh = 15;				// NEW_CHANGE
+	nreno->search_drain_ackedseg_thresh = 15;	// NEW_CHANGE
 	nreno->search_drain_ackedseg = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
@@ -1340,6 +1340,10 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->css_current_round_minrtt = usec_rtt;
 		nreno->css_lowrtt_fas = nreno->css_last_fas;
 	}
+	#if defined(HYSTARTPP_LOG_ENABLED)
+	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u] [css_lowrtt_fas %u]\n", 
+		ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample, nreno->css_lowrtt_fas);
+	#endif
 	if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
 	    (nreno->css_current_round_minrtt != 0xffffffff) &&
 	    (nreno->css_current_round_minrtt < nreno->css_baseline_minrtt) &&
