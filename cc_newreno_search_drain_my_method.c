@@ -842,24 +842,19 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	/* SEARCH_end */
 
 	#if defined(ACK_LOG_ENABLED)
-	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_bytes_acked %u] [curack %u]  [cwnd %u] [ssthresh %u]\n",
+	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_bytes_acked %u] [curack %u]  [cwnd %u] [ssthresh %u] [mss %u] [cur_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]\n",
         ccv,
         now_us,
         rtt_us,
         nreno->search_cumulative_acked_bytes,
         ccv->curack,
         CCV(ccv, snd_cwnd),
-        CCV(ccv, snd_ssthresh)
-        );
-
-	log(LOG_INFO, "<%p> ACK:[CCRG] [mss %u] [cur_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]\n",
-        ccv,
+        CCV(ccv, snd_ssthresh),
         CCV(ccv, t_maxseg),
         ccv->bytes_this_ack,
         CCV(ccv, t_sndbytes),
         (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0
         );
-  	#endif
 
 	#if defined(DEBUG_LOG_ENABLED)
 	if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
@@ -868,8 +863,8 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
 	uint32_t snwd = CCV(ccv, snd_wnd);
 
-	log(LOG_INFO, "<%p> DEBUG:[CCRG] [cwnd %u] [in_ackrecieved_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
-           ccv, cwnd, infl_dbg, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
+	log(LOG_INFO, "<%p> DEBUG:[CCRG] [now_debug %u][cwnd %u] [in_ackrecieved_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
+           ccv, now_us, cwnd, infl_dbg, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
 	#endif
 	
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
