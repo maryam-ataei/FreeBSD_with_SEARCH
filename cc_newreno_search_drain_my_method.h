@@ -33,8 +33,8 @@
 typedef uint16_t search_bin_t;
 #define MAX_US_INT 0xffff	//16bit	0xffff   32bit	0xffffffff
 
-#define V_use_search 1
-#define V_use_hystartpp 0
+//#define V_use_search 1
+//#define V_use_hystartpp 0
 
 #define V_CWND_ROLLBACK 1
 #define SEARCH_WINDOW_SIZE_FACTOR 35

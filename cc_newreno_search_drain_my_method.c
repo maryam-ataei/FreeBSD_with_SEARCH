@@ -109,6 +109,12 @@ static void	newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rx
 static 	int	newreno_cb_init(struct cc_var *ccv, void *);
 static size_t	newreno_data_sz(void);
 
+static uint32_t newreno_use_search = 0;
+static uint32_t newreno_use_hystartpp = 0;
+
+#define V_use_search     (newreno_use_search)
+#define V_use_hystartpp  (newreno_use_hystartpp)
+
 
 VNET_DECLARE(uint32_t, newreno_beta);
 #define V_newreno_beta VNET(newreno_beta)
@@ -1377,6 +1383,14 @@ SYSCTL_PROC(_net_inet_tcp_cc_newreno, OID_AUTO, beta_ecn,
     CTLFLAG_VNET | CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_NEEDGIANT,
     &VNET_NAME(newreno_beta_ecn), 3, &newreno_beta_handler, "IU",
     "New Reno beta ecn, specified as number between 1 and 100");
+
+SYSCTL_UINT(_net_inet_tcp_cc_newreno, OID_AUTO, use_search,
+    CTLFLAG_RW | CTLFLAG_MPSAFE, &newreno_use_search, 0,
+    "Enable SEARCH during slow start");
+
+SYSCTL_UINT(_net_inet_tcp_cc_newreno, OID_AUTO, use_hystartpp,
+    CTLFLAG_RW | CTLFLAG_MPSAFE, &newreno_use_hystartpp, 0,
+    "Enable HyStart++");
 
 
 /* SEARCH_begin */
