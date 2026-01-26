@@ -91,14 +91,6 @@
 #include <netinet/tcp_hpts.h>
 /* SEARCH_end */
 
-/*
- * SEARCH: Logging and debug macros
- */
-#define SEARCH_LOG_ENABLED
-#define HYSTARTPP_LOG_ENABLED
-#define ACK_LOG_ENABLED
-#define DEBUG_LOG_ENABLED
-
 static void	newreno_cb_destroy(struct cc_var *ccv);
 static void	newreno_ack_received(struct cc_var *ccv, uint16_t type);
 static void	newreno_after_idle(struct cc_var *ccv);
@@ -120,6 +112,32 @@ VNET_DECLARE(uint32_t, newreno_beta);
 #define V_newreno_beta VNET(newreno_beta)
 VNET_DECLARE(uint32_t, newreno_beta_ecn);
 #define V_newreno_beta_ecn VNET(newreno_beta_ecn)
+
+/*
+ * SEARCH: Logging and debug macros
+ */
+#ifdef SEARCH_LOG_ENABLED
+#define SEARCH_LOG(fmt, ...)                                  \
+    do {                                                      \
+        if (V_use_search)                                    \
+            log(LOG_DEBUG, "[SEARCH] " fmt, ##__VA_ARGS__);  \
+    } while (0)
+#else
+#define SEARCH_LOG(fmt, ...) do {} while (0)
+#endif
+
+#ifdef HYSTARTPP_LOG_ENABLED
+#define HYSTARTPP_LOG(fmt, ...)                                    \
+    do {                                                          \
+        if (V_use_hystartpp)                                      \
+            log(LOG_DEBUG, "[HYSTART++] " fmt, ##__VA_ARGS__);    \
+    } while (0)
+#else
+#define HYSTARTPP_LOG(fmt, ...) do {} while (0)
+#endif
+
+#define ACK_LOG_ENABLED
+#define DEBUG_LOG_ENABLED
 
 /* SEARCH_begin */
 /*
@@ -160,7 +178,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			// NEW_CHANGE
 	nreno->search_cwnd_reduction_to_target = 0;	// NEW_CHANGE
-	nreno->search_drain_ackedseg_thresh = 15;	// NEW_CHANGE
+	nreno->search_drain_ackedseg_thresh = 3;	// NEW_CHANGE
 	nreno->search_drain_ackedseg = 0;			// NEW_CHANGE
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
