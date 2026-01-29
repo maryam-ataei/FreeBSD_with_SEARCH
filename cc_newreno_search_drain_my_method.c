@@ -116,26 +116,8 @@ VNET_DECLARE(uint32_t, newreno_beta_ecn);
 /*
  * SEARCH: Logging and debug macros
  */
-#ifdef SEARCH_LOG_ENABLED
-#define SEARCH_LOG(fmt, ...)                                  \
-    do {                                                      \
-        if (V_use_search)                                    \
-            log(LOG_DEBUG, "[SEARCH] " fmt, ##__VA_ARGS__);  \
-    } while (0)
-#else
-#define SEARCH_LOG(fmt, ...) do {} while (0)
-#endif
-
-#ifdef HYSTARTPP_LOG_ENABLED
-#define HYSTARTPP_LOG(fmt, ...)                                    \
-    do {                                                          \
-        if (V_use_hystartpp)                                      \
-            log(LOG_DEBUG, "[HYSTART++] " fmt, ##__VA_ARGS__);    \
-    } while (0)
-#else
-#define HYSTARTPP_LOG(fmt, ...) do {} while (0)
-#endif
-
+#define SEARCH_LOG_ENABLED 
+#define HYSTARTPP_LOG_ENABLED
 #define ACK_LOG_ENABLED
 #define DEBUG_LOG_ENABLED
 
@@ -934,10 +916,12 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 				nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 				newreno_log_hystart_event(ccv, nreno, 11, CCV(ccv, snd_ssthresh));
 
-				#if defined(HYSTARTPP_LOG_ENABLED)
-				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP exits [HyPP_flag %u]\n", 
-					ccv, now_us, nreno->newreno_flags); 
-				#endif
+				if (V_use_hystartpp){
+					#if defined(HYSTARTPP_LOG_ENABLED)
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP exits [HyPP_flag %u]\n", 
+						ccv, now_us, nreno->newreno_flags); 
+					#endif
+				}
 
 			}
 			if (V_tcp_do_rfc3465) {
@@ -1007,9 +991,11 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 						newreno_log_hystart_event(ccv, nreno, 1, rtt_thresh);
 						if (nreno->css_current_round_minrtt >= (nreno->css_lastround_minrtt + rtt_thresh)) {
 
-							#if defined(HYSTARTPP_LOG_ENABLED)
-							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in CSS\n", ccv, now_us); 
-							#endif
+							if (V_use_hystartpp) {
+								#if defined(HYSTARTPP_LOG_ENABLED)
+								log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP is in CSS\n", ccv, now_us); 
+								#endif
+							}
 
 							/* Enter CSS */
 							nreno->newreno_flags |= CC_NEWRENO_HYSTART_IN_CSS;
@@ -1025,11 +1011,13 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 							nreno->css_entered_at_round = nreno->css_current_round;
 							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);
 
-							#if defined(HYSTARTPP_LOG_ENABLED)
-							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] "
-								"[css_entered_at_round %u]\n", 
-								ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
-							#endif							
+							if (V_use_hystartpp) {
+								#if defined(HYSTARTPP_LOG_ENABLED)
+								log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] "
+									"[css_entered_at_round %u]\n", 
+									ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
+								#endif
+							}							
 						}
 					}
 				}
@@ -1049,11 +1037,12 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 					incr /= hystart_css_growth_div;
 				/* SEARCH_end */
 
-				#if defined(HYSTARTPP_LOG_ENABLED)
-				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [incr %u]\n", 
-					ccv, now_us, incr); 
-				#endif	
-
+				if (V_use_hystartpp) {
+					#if defined(HYSTARTPP_LOG_ENABLED)
+					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [incr %u]\n", 
+						ccv, now_us, incr); 
+					#endif	
+				}
 				newreno_log_hystart_event(ccv, nreno, 3, incr);
 			}
 
@@ -1283,12 +1272,14 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_rttsample_count = 0;
 	nreno->css_current_round = round_cnt;
 
-	#if defined(HYSTARTPP_LOG_ENABLED)
-	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
-		"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
-		ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
-		nreno->css_rttsample_count, nreno->css_current_round);
-	#endif
+	if (V_use_hystartpp) {
+		#if defined(HYSTARTPP_LOG_ENABLED)
+		log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
+			"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
+			ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
+			nreno->css_rttsample_count, nreno->css_current_round);
+		#endif
+	}
 
 	if ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) &&
 	    ((round_cnt - nreno->css_entered_at_round) >= hystart_css_rounds)) {
@@ -1364,10 +1355,15 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->css_current_round_minrtt = usec_rtt;
 		nreno->css_lowrtt_fas = nreno->css_last_fas;
 	}
-	#if defined(HYSTARTPP_LOG_ENABLED)
-	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u] [css_lowrtt_fas %u]\n", 
-		ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample, nreno->css_lowrtt_fas);
-	#endif
+
+	
+	if (V_use_hystartpp){
+		#if defined(HYSTARTPP_LOG_ENABLED)
+		log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u] [css_lowrtt_fas %u]\n", 
+			ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample, nreno->css_lowrtt_fas);
+		#endif
+	}
+
 	if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
 	    (nreno->css_current_round_minrtt != 0xffffffff) &&
 	    (nreno->css_current_round_minrtt < nreno->css_baseline_minrtt) &&
@@ -1379,9 +1375,12 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_IN_CSS;
 		newreno_log_hystart_event(ccv, nreno, 8, nreno->css_baseline_minrtt);
 		nreno->css_baseline_minrtt = 0xffffffff;
-		#if defined(HYSTARTPP_LOG_ENABLED)
-		log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP back to the SS from CSS [now %lu]\n", ccv, get_now_us());
-		#endif
+
+		if (V_use_hystartpp){
+			#if defined(HYSTARTPP_LOG_ENABLED)
+			log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP back to the SS from CSS [now %lu]\n", ccv, get_now_us());
+			#endif
+		}
 	}
 	if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)
 		newreno_log_hystart_event(ccv, nreno, 5, usec_rtt);
