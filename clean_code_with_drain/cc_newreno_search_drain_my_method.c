@@ -520,7 +520,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
 		/* Number of bins spanning ~1 RTT */
-		rtt_bins = (initial_rtt + ca->search_bin_duration_us - 1) / ca->search_bin_duration_us; /* ceil */
+		rtt_bins = (initial_rtt + nreno->search_bin_duration_us - 1) / nreno->search_bin_duration_us; /* ceil */
  
 		cong_idx = nreno->search_curr_idx - rtt_bins;
 
@@ -675,7 +675,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	struct newreno *nreno;
 	
 	nreno = ccv->cc_data;
-=
+	
 	uint64_t now_us = 0;
 	uint64_t rtt_us = 0;
 	uint32_t infl_dbg = 0;
