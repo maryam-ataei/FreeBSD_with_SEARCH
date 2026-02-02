@@ -762,8 +762,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
 
 	#if defined(LOGGING_ENABLED)
-	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_bytes_acked %u] [curack %u] [cwnd %u] [ssthresh %u] [mss %u] [cur_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]"
-		" [total_B_retrans %ju]\n",
+	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [t_B_acked %u] [curack %u] [cwnd %u] [ssthresh %u] [mss %u] [t_B__sent %lu] [cwnd_limited %d] [t_B_retrans %ju]\n",
     ccv,
     now_us,
     rtt_us,
@@ -772,10 +771,9 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
     CCV(ccv, snd_cwnd),
     CCV(ccv, snd_ssthresh),
     CCV(ccv, t_maxseg),
-    ccv->bytes_this_ack,
     CCV(ccv, t_sndbytes),
     (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
-     (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
+    (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
 	#endif
 
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
