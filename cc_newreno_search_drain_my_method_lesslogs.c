@@ -763,7 +763,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 	#if defined(LOGGING_ENABLED)
 	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_bytes_acked %u] [curack %u] [cwnd %u] [ssthresh %u] [mss %u] [cur_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]"
-		"[total_B_retrans %ju] [cons_dup_acked %d]\n",
+		" [total_B_retrans %ju]\n",
     ccv,
     now_us,
     rtt_us,
@@ -775,9 +775,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
     ccv->bytes_this_ack,
     CCV(ccv, t_sndbytes),
     (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
-     (uintmax_t)CCV(ccv, t_snd_rxt_bytes),
-    CCV(ccv, t_dupacks)
-    );
+     (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
 	#endif
 
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
