@@ -35,8 +35,9 @@ typedef uint16_t search_bin_t;											/* Bin type for SEARCH; change width (e
 #define V_CWND_ROLLBACK 1 												/* Decrease the cwnd to its value in 1 initial RTT ago (three bins) */
 #define SEARCH_WINDOW_SIZE_FACTOR 35 									/* Multiply with (initial RTT / 10) to set the window size */
 #define SEARCH_WIN_BINS 10												/* Number of bins in a window */
+#define SEARCH_EXTRA_ACKED_BINS 1  										/* Number of additional bins to calculate delivery window (as this is cumulative, we need one more bin) */
 #define SEARCH_EXTRA_SENT_BINS 35										/* Number of additional bins to cover data after shiftting by RTT */
-#define SEARCH_ACKED_BINS (SEARCH_WIN_BINS)								/* Number of total bins in a acked window */
+#define SEARCH_ACKED_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_ACKED_BINS)	/* Number of total bins in a acked window */
 #define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)		/* Number of total bins in a acked window */
 #define SEARCH_THRESH 26												/* Threshold for exiting from slow start in percentage */
 #define SEARCH_ALPHA MAX_US_INT											/* Alpha factor for determining missed bin limit in SEARCH. Currently disabled */
