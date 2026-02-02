@@ -763,7 +763,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 	#if defined(LOGGING_ENABLED)
 	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_bytes_acked %u] [curack %u] [cwnd %u] [ssthresh %u] [mss %u] [cur_bytes_acked %u] [total_bytes_sent %lu] [cwnd_limited %d]"
-		"[total_B_retrans %u] [cons_dup_acked %u]\n",
+		"[total_B_retrans %ju] [cons_dup_acked %d]\n",
     ccv,
     now_us,
     rtt_us,
@@ -775,7 +775,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
     ccv->bytes_this_ack,
     CCV(ccv, t_sndbytes),
     (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
-    CCV(ccv, t_snd_rxt_bytes),
+     (uintmax_t)CCV(ccv, t_snd_rxt_bytes),
     CCV(ccv, t_dupacks)
     );
 	#endif
@@ -866,7 +866,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 					#if defined(LOGGING_ENABLED)
 					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
-						ccv, now_us, nreno->newreno_flags, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
+						ccv, now_us, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
 					#endif
 					/*
 					 * Hystart is allowed and still enabled and we are not yet
@@ -1139,7 +1139,7 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_rttsample_count = 0;
 	nreno->css_current_round = round_cnt;
 
-	if (V_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
+	if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
 		#if defined(LOGGING_ENABLED)
 		log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
 			"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
@@ -1207,7 +1207,7 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->css_lowrtt_fas = nreno->css_last_fas;
 	}
 
-	if (V_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)){
+	if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)){
 	#if defined(LOGGING_ENABLED)
 	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u]\n", 
 		ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample);
