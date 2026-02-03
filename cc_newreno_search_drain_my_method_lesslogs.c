@@ -776,7 +776,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
     (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
 
     if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
-    	infl_dbg = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
+    	uint32_t infl_dbg = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
 	uint32_t rwnd = CCV(ccv, rcv_wnd);
 	uint32_t snwd = CCV(ccv, snd_wnd);
