@@ -752,6 +752,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	uint64_t now_us = 0;
 	uint64_t rtt_us = 0;
 	now_us = get_now_us();
+	uint32_t infl_dbg = 0;
 
 	if (nreno->last_rtt_sample > 0){
 		rtt_us = nreno->last_rtt_sample;
@@ -775,7 +776,6 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
     (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
     (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
 
-	uint32_t infl_dbg = 0;
     if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una)))
     	infl_dbg = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
 	uint32_t cwnd = CCV(ccv, snd_cwnd);
