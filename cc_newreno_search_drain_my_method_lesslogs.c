@@ -663,6 +663,24 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					return true;
 				}
 			}
+
+			#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
+				"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
+				"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
+				ccv,
+				now_us, 
+				nreno->search_bin_duration_us, 
+				nreno->search_bin_end_us, 
+				curr_delv_bytes,
+				prev_sent_bytes,
+				norm_diff,
+				nreno->search_scale_factor,
+				nreno->search_curr_idx,
+				prev_idx,
+				fraction
+				);
+			#endif
 		}
 	}
 	/* SEARCH drain phase */
@@ -693,16 +711,16 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		/* never go below target while draining */
 		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
-		#if defined(LOGGING_ENABLED)
-		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [drain_ackedseg %u] [drain_thresh %u] [adds %u] \n",
-			ccv, now_us, segs_acked, nreno->search_drain_ackedseg, nreno->search_drain_ackedseg_thresh, adds);
+		// #if defined(LOGGING_ENABLED)
+		// log(LOG_INFO,
+		// 	"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [drain_ackedseg %u] [drain_thresh %u] [adds %u] \n",
+		// 	ccv, now_us, segs_acked, nreno->search_drain_ackedseg, nreno->search_drain_ackedseg_thresh, adds);
 
 
-		log(LOG_INFO,
-			"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
-			ccv, now_us, inflight, CCV(ccv, snd_cwnd), ccv->bytes_this_ack, nreno->search_targeted_cwnd);
-		#endif
+		// log(LOG_INFO,
+		// 	"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
+		// 	ccv, now_us, inflight, CCV(ccv, snd_cwnd), ccv->bytes_this_ack, nreno->search_targeted_cwnd);
+		// #endif
 
 		/* Drain completed: lock CWND and exit slow start */
 		if (CCV(ccv, snd_cwnd) == nreno->search_targeted_cwnd) {
@@ -721,24 +739,6 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	    }
 	    return true; 
 	}
-
-	#if defined(LOGGING_ENABLED)
-	log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
-		"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
-		"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
-		ccv,
-		now_us, 
-		nreno->search_bin_duration_us, 
-		nreno->search_bin_end_us, 
-		curr_delv_bytes,
-		prev_sent_bytes,
-		norm_diff,
-		nreno->search_scale_factor,
-		nreno->search_curr_idx,
-		prev_idx,
-		fraction
-		);
-	#endif
 
 	return false;
 }
@@ -830,10 +830,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 				/* Disable use of CSS in the future except long idle  */
 				nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 				newreno_log_hystart_event(ccv, nreno, 11, CCV(ccv, snd_ssthresh));
-				#if defined(LOGGING_ENABLED)
-				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [HyPP_flag %u] [ccv_flag %u]\n", 
-					ccv, now_us, nreno->newreno_flags, ccv->flags); 
-				#endif	
+				// #if defined(LOGGING_ENABLED)
+				// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [HyPP_flag %u] [ccv_flag %u]\n", 
+				// 	ccv, now_us, nreno->newreno_flags, ccv->flags); 
+				// #endif	
 			}
 
 			if (V_tcp_do_rfc3465) {
@@ -863,18 +863,18 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 				abc_val = V_tcp_abc_l_var;
 
 			if (newreno_use_hystartpp) {
-				#if defined(LOGGING_ENABLED)
-				log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [HyPP_flag %u] [ccv_flag %u]\n", 
-					ccv, now_us, nreno->newreno_flags, ccv->flags); 
-				#endif	
+				// #if defined(LOGGING_ENABLED)
+				// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [HyPP_flag %u] [ccv_flag %u]\n", 
+				// 	ccv, now_us, nreno->newreno_flags, ccv->flags); 
+				// #endif	
 				if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
 					(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
-					#if defined(LOGGING_ENABLED)
-					log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
-						ccv, now_us, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
-					#endif
+					// #if defined(LOGGING_ENABLED)
+					// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
+					// 	ccv, now_us, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
+					// #endif
 					/*
 					 * Hystart is allowed and still enabled and we are not yet
 					 * in CSS. Lets check to see if we can make a decision on
@@ -910,10 +910,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 							nreno->css_entered_at_round = nreno->css_current_round;
 							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);	
 
-							#if defined(LOGGING_ENABLED)
-							log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] [css_entered_at_round %u]\n", 
-							ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
-							#endif					
+							// #if defined(LOGGING_ENABLED)
+							// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] [css_entered_at_round %u]\n", 
+							// ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
+							// #endif					
 						}
 					}
 				}
@@ -945,11 +945,18 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 		if (incr > 0)
 			CCV(ccv, snd_cwnd) = min(cw + incr,
 			    TCP_MAXWIN << CCV(ccv, snd_scale));
+
+		if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
+			#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now_ %lu] [HyPP_flag %u] [css_base_minrtt %u] [css_entered_rnd %u] [css_cur_rnd %u] [css_cur_rnd_minrtt %u] [last_rtt_sample %u]\n",
+	           ccv, now_us, nreno->newreno_flags, nreno->css_baseline_minrtt, nreno->css_entered_at_round, nreno->css_current_round, nreno->css_current_round_minrtt, nreno->last_rtt_sample);
+			#endif
+		}
 	}
 }
 
 static void
-newreno_after_idle(struct cc_var *ccv)
+newreno_after_idle(struct cc_var *ccv) 
 {
 	struct newreno *nreno;
 
@@ -966,7 +973,8 @@ newreno_after_idle(struct cc_var *ccv)
 	#if defined(LOGGING_ENABLED)
 	log(LOG_INFO, "<%p> DEBUG:[CCRG] After idle [now %lu]\n", ccv, get_now_us()); 
 	#endif
-	search_reset(nreno, RESET_BIN_DURATION_TRUE);
+	if (newreno_use_search)
+		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 }
 
 /*
@@ -1007,12 +1015,11 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 	switch (type) {
 	case CC_NDUPACK:
 
-		if (newreno_use_search){
-			#if defined(LOGGING_ENABLED)
-			log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
-			#endif
+		if (newreno_use_search)
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		}
+		#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
+		#endif
 		if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) {
 			/* Make sure the flags are all off we had a loss */
 			nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
@@ -1033,12 +1040,13 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 		break;
 	case CC_ECN:
 
-		if (newreno_use_search){
-			#if defined(LOGGING_ENABLED)
-			log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
-			#endif
+		if (newreno_use_search)
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		}
+
+		#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
+		#endif
+
 		if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) {
 			/* Make sure the flags are all off we had a loss */
 			nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
@@ -1053,12 +1061,12 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 		break;
 	case CC_RTO:
 
-		if (newreno_use_search){
-			#if defined(LOGGING_ENABLED)
-			log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
-			#endif
+		if (newreno_use_search)
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
-		}
+
+		#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
+		#endif
 		CCV(ccv, snd_ssthresh) = max(min(CCV(ccv, snd_wnd),
 						 CCV(ccv, snd_cwnd)) / 2 / mss,
 					     2) * mss;
@@ -1146,23 +1154,23 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_rttsample_count = 0;
 	nreno->css_current_round = round_cnt;
 
-	if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
-		#if defined(LOGGING_ENABLED)
-		log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
-			"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
-			ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
-			nreno->css_rttsample_count, nreno->css_current_round);
-		#endif
-	}
+	// if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
+		// #if defined(LOGGING_ENABLED)
+		// log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
+		// 	"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
+		// 	ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
+		// 	nreno->css_rttsample_count, nreno->css_current_round);
+		// #endif
+	// }
 
 	//Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
 	if (newreno_use_hystartpp) {
 		if ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) &&
 		    ((round_cnt - nreno->css_entered_at_round) >= hystart_css_rounds)) {
-			#if defined(LOGGING_ENABLED)
-			log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP enters CA [now %lu] [HyPP_flag %u] \n", 
-				ccv, get_now_us(),nreno->newreno_flags);
-			#endif
+			// #if defined(LOGGING_ENABLED)
+			// log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP enters CA [now %lu] [HyPP_flag %u] \n", 
+			// 	ccv, get_now_us(),nreno->newreno_flags);
+			// #endif
 			/* Enter CA */
 			if (ccv->flags & CCF_HYSTART_CAN_SH_CWND) {
 				/*
@@ -1214,12 +1222,12 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->css_lowrtt_fas = nreno->css_last_fas;
 	}
 
-	if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)){
-	#if defined(LOGGING_ENABLED)
-	log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u]\n", 
-		ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample);
-	#endif
-	}
+	// if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)){
+	// #if defined(LOGGING_ENABLED)
+	// log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u]\n", 
+	// 	ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample);
+	// #endif
+	// }
 
 	if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
 	    (nreno->css_current_round_minrtt != 0xffffffff) &&
