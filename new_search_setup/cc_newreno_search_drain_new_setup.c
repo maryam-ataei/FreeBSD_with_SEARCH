@@ -146,7 +146,8 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_targeted_cwnd = 0;			
 	nreno->search_cwnd_reduction_to_target = 0;	
 	nreno->search_drain_ackedseg_thresh = 3;	/* Tunable: ACKed segments per CWND increment during drain */
-	nreno->search_drain_ackedseg = 0;		
+	nreno->search_drain_ackedseg = 0;	
+	nreno->search_norm_ewma=0; 
 	if (flag == RESET_BIN_DURATION_TRUE)
 		nreno->search_bin_duration_us = 0;
 }
@@ -636,31 +637,37 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				norm_diff = (prev_sent_bytes - curr_delv_bytes) * 100 / prev_sent_bytes;
 
 				/* check for exit condition */
-				if (prev_sent_bytes >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
+				if (prev_sent_bytes >= curr_delv_bytes) {
+					/* EWMA smoothing of norm (alpha = 1/4) */
+					nreno->search_norm_ewma = (3 * nreno->search_norm_ewma + norm_diff) >> 2;
 
-					#if defined(LOGGING_ENABLED)
-					log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
-						"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
-						"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
-						ccv,
-						now_us, 
-						nreno->search_bin_duration_us, 
-						nreno->search_bin_end_us, 
-						curr_delv_bytes,
-						prev_sent_bytes,
-						norm_diff,
-						nreno->search_scale_factor,
-						nreno->search_curr_idx,
-						prev_idx,
-						fraction
-						);
-					#endif
+					if (nreno->search_norm_ewma >= SEARCH_THRESH) {
 
-					/* Compute target cwnd but do NOT apply it yet */
-					search_compute_target_cwnd(ccv, now_us, rtt_us);
-					/* Enable SEARCH Drain phase*/
-					nreno->search_cwnd_reduction_to_target = 1;
-					return true;
+						#if defined(LOGGING_ENABLED)
+						log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
+							"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [raw_norm %d][norm_100 %d] "
+							"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
+							ccv,
+							now_us, 
+							nreno->search_bin_duration_us, 
+							nreno->search_bin_end_us, 
+							curr_delv_bytes,
+							prev_sent_bytes,
+							norm_diff,
+							nreno->search_norm_ewma,
+							nreno->search_scale_factor,
+							nreno->search_curr_idx,
+							prev_idx,
+							fraction
+							);
+						#endif
+
+						/* Compute target cwnd but do NOT apply it yet */
+						search_compute_target_cwnd(ccv, now_us, rtt_us);
+						/* Enable SEARCH Drain phase*/
+						nreno->search_cwnd_reduction_to_target = 1;
+						return true;
+					}
 				}
 			}
 

@@ -39,7 +39,7 @@ typedef uint16_t search_bin_t;											/* Bin type for SEARCH; change width (e
 #define SEARCH_EXTRA_SENT_BINS 35										/* Number of additional bins to cover data after shiftting by RTT */
 #define SEARCH_ACKED_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_ACKED_BINS)	/* Number of total bins in a acked window */
 #define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)		/* Number of total bins in a acked window */
-#define SEARCH_THRESH 26												/* Threshold for exiting from slow start in percentage */
+#define SEARCH_THRESH 13												/* Threshold for exiting from slow start in percentage */
 #define SEARCH_ALPHA MAX_US_INT											/* Alpha factor for determining missed bin limit in SEARCH. Currently disabled */
 
 /**
@@ -79,6 +79,7 @@ struct newreno {
 	uint8_t search_cwnd_reduction_to_target; 			/* Triggers CWND drain toward search_targeted_cwnd */
 	uint32_t search_drain_ackedseg_thresh;        		/* ACKed-segment threshold to permit CWND increase during drain */
 	uint32_t search_drain_ackedseg;      	 			/* Accumulates number of segments ACKed during SEARCH drain */
+	int32_t search_norm_ewma;   /* EWMA-smoothed norm (percent) */ 
 
 };
 
