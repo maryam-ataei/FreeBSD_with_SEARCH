@@ -673,7 +673,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 			#if defined(LOGGING_ENABLED)
 			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
-				"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
+				"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [raw_norm %d][norm_100 %d] "
 				"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
 				ccv,
 				now_us, 
@@ -682,6 +682,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				curr_delv_bytes,
 				prev_sent_bytes,
 				norm_diff,
+				nreno->search_norm_ewma,
 				nreno->search_scale_factor,
 				nreno->search_curr_idx,
 				prev_idx,
