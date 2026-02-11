@@ -145,7 +145,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;			
 	nreno->search_cwnd_reduction_to_target = 0;	
-	nreno->search_drain_ackedseg_thresh = 3;	/* Tunable: ACKed segments per CWND increment during drain */
+	nreno->search_drain_ackedseg_thresh = 16;	/* Tunable: ACKed segments per CWND increment during drain */
 	nreno->search_drain_ackedseg = 0;	
 	nreno->search_norm_ewma=0; 
 	if (flag == RESET_BIN_DURATION_TRUE)
