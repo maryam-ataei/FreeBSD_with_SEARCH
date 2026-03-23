@@ -35,12 +35,14 @@ typedef uint16_t search_bin_t;											/* Bin type for SEARCH; change width (e
 #define SEARCH_WINDOW_SIZE_FACTOR 35 									/* Multiply with (initial RTT / 10) to set the window size */
 #define SEARCH_WIN_BINS 10												/* Number of bins in a window */
 #define SEARCH_EXTRA_ACKED_BINS 1  										/* Number of additional bins to calculate delivery window (as this is cumulative, we need one more bin) */
-#define SEARCH_EXTRA_SENT_BINS 35										/* Number of additional bins to cover data after shiftting by RTT */
+#define SEARCH_EXTRA_SENT_BINS 40										/* Number of additional bins to cover data after shiftting by RTT */
 #define SEARCH_ACKED_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_ACKED_BINS)	/* Number of total bins in a acked window */
-#define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)		/* Number of total bins in a sent window */
-#define SEARCH_THRESH 26												/* Threshold for exiting from slow start in percentage */
+#define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)		/* Number of total bins in a acked window */
 #define SEARCH_ALPHA MAX_US_INT											/* Alpha factor for determining missed bin limit in SEARCH. Currently disabled */
 #define SEARCH_DRAIN_ACKEDSEG_THRESH 16        							/* ACKed-segment threshold to permit CWND increase during drain */
+#define SEARCH_RULE_N 3
+#define SEARCH_MAX_THRESH 50												/* Maximum threshold for exiting from slow start in percentage */
+
 
 /**
  * Control whether SEARCH bin duration is reset.
@@ -74,10 +76,13 @@ struct newreno {
 	search_bin_t search_acked_bin[SEARCH_ACKED_BINS];	/* array to keep acked bytes for bins */
 	search_bin_t search_sent_bin[SEARCH_SENT_BINS];		/* array to keep sent bytes for bins */
 	uint8_t search_scale_factor;						/* scale factor to fit the value with bin size */
-	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
+	uint64_t search_cumulative_acked_bytes;				/* cumulative byte acked */
 	uint64_t search_targeted_cwnd;  					/* Rollback CWND target = BDP estimate from one RTT earlier; used to initiate SEARCH drain */
 	uint8_t search_cwnd_reduction_to_target; 			/* Triggers CWND drain toward search_targeted_cwnd */
 	uint32_t search_drain_ackedseg;      	 			/* Accumulates number of segments ACKed during SEARCH drain */
+	uint32_t search_norm_hist[SEARCH_RULE_N];
+	uint8_t  search_norm_hist_cnt;   /* how many valid samples we have: 0..3 */
+	uint8_t  search_norm_hist_pos;   /* circular index */	
 
 };
 

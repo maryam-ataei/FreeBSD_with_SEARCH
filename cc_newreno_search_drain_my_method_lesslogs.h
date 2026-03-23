@@ -32,7 +32,6 @@
 typedef uint16_t search_bin_t;											/* Bin type for SEARCH; change width (e.g., uint32_t/uint64_t) to adjust bin size */
 #define MAX_US_INT 0xffff	//16bit:0xffff   32bit:0xffffffff			/* Maximum size of each bin in bits */
 
-#define V_CWND_ROLLBACK 1 												/* Decrease the cwnd to its value in 1 initial RTT ago (three bins) */
 #define SEARCH_WINDOW_SIZE_FACTOR 35 									/* Multiply with (initial RTT / 10) to set the window size */
 #define SEARCH_WIN_BINS 10												/* Number of bins in a window */
 #define SEARCH_EXTRA_ACKED_BINS 1  										/* Number of additional bins to calculate delivery window (as this is cumulative, we need one more bin) */

@@ -507,52 +507,35 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
 	
-	/*
-	 * If CWND rollback is enabled, SEARCH computes a target congestion window
-	 * that compensates for a one-RTT-late congestion signal.
-	 *
-	 * The algorithm estimates the delivered bytes over a past RTT
-	 * (approximately one RTT earlier) using SEARCH ACKed bins and derives
-	 * a BDP-based target CWND from this window.
-	 *
-	 * This target CWND is not applied immediately. Instead, it is stored in
-	 * search_targeted_cwnd and later used by SEARCH to gradually drain excess
-	 * in-flight data in a controlled manner.
-	 *
-	 * A minimum bound of TCP_INIT_CWND is enforced to prevent overly aggressive
-	 * rollback in the presence of noise or anomalous measurements.
-	 */
 
-	if (V_CWND_ROLLBACK) {
+	initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
-		initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
+	/* Number of bins spanning ~1 RTT */
+	rtt_bins = (initial_rtt + nreno->search_bin_duration_us - 1) / nreno->search_bin_duration_us; /* ceil */
 
-		/* Number of bins spanning ~1 RTT */
-		rtt_bins = (initial_rtt + nreno->search_bin_duration_us - 1) / nreno->search_bin_duration_us; /* ceil */
- 
-		cong_idx = nreno->search_curr_idx - rtt_bins;
+	cong_idx = nreno->search_curr_idx - rtt_bins;
 
-		if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
+	if (nreno->search_curr_idx - cong_idx <= SEARCH_ACKED_BINS - 1){
 
-			/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
-			overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
+		/* Calculate the overshoot based on the delivered bytes between cong_idx and the current index */
+		overshoot_cwnd = (int64_t)search_compute_delv_window(ccv, cong_idx, nreno->search_curr_idx);
 
-			overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
+		overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
-			nreno->search_targeted_cwnd = max(overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
+		nreno->search_targeted_cwnd = max(overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
 
-			if (newreno_use_search){
-				#if defined(LOGGING_ENABLED)
-				log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [overshoot_cwnd_rescaled %u] [cong_idx %u] [search_targeted_cwnd %lu]\n", 
-				ccv,
-				now_us, 
-				overshoot_cwnd_rescaled,
-				cong_idx,
-				nreno->search_targeted_cwnd);
-				#endif
-			}
+		if (newreno_use_search){
+			#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [overshoot_cwnd_rescaled %u] [cong_idx %u] [search_targeted_cwnd %lu]\n", 
+			ccv,
+			now_us, 
+			overshoot_cwnd_rescaled,
+			cong_idx,
+			nreno->search_targeted_cwnd);
+			#endif
 		}
 	}
+
 }
 
 /*

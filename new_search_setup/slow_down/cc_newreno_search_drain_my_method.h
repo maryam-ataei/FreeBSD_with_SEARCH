@@ -39,8 +39,29 @@ typedef uint16_t search_bin_t;											/* Bin type for SEARCH; change width (e
 #define SEARCH_EXTRA_SENT_BINS 35										/* Number of additional bins to cover data after shiftting by RTT */
 #define SEARCH_ACKED_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_ACKED_BINS)	/* Number of total bins in a acked window */
 #define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)		/* Number of total bins in a acked window */
-#define SEARCH_THRESH 13												/* Threshold for exiting from slow start in percentage */
 #define SEARCH_ALPHA MAX_US_INT											/* Alpha factor for determining missed bin limit in SEARCH. Currently disabled */
+#define SEARCH_DRAIN_ACKEDSEG_THRESH 16        							/* ACKed-segment threshold to permit CWND increase during drain */
+
+
+/* ####################### S:NEW_SLOW_DOWN ############################## */
+/* Stage thresholds (percent) */
+#define SEARCH_T1        13   /* 1/3 RTT late ~ 0.13 */
+#define SEARCH_T2        21   /* 2/3 RTT late ~ 0.21 */
+#define SEARCH_T3        26   /* 1 RTT late  ~ 0.26 (existing SEARCH_THRESH) */
+
+/* Hysteresis to avoid flapping back to faster growth */
+#define SEARCH_T1_LOW    10
+#define SEARCH_T2_LOW    17
+
+/* “Persistence” (how many consecutive bins above a threshold to confirm) */
+#define SEARCH_H1_BINS    2   /* if stays >= T1 for 2 bins, keep stage1 */
+#define SEARCH_H2_BINS    2   /* if stays >= T2 for 2 bins, keep stage2 */
+
+/* Growth divisors (how much to slow incr). 1 = normal, 2 = half, 4 = quarter */
+#define SEARCH_DIV_STAGE0 1
+#define SEARCH_DIV_STAGE1 2
+#define SEARCH_DIV_STAGE2 4
+/* ####################### E:NEW_SLOW_DOWN ############################## */
 
 /**
  * Control whether SEARCH bin duration is reset.
@@ -74,12 +95,18 @@ struct newreno {
 	search_bin_t search_acked_bin[SEARCH_ACKED_BINS];	/* array to keep acked bytes for bins */
 	search_bin_t search_sent_bin[SEARCH_SENT_BINS];		/* array to keep sent bytes for bins */
 	uint8_t search_scale_factor;						/* scale factor to fit the value with bin size */
-	uint64_t search_cumulative_acked_bytes;				/* cumulative byte acked */
+	uint32_t search_cumulative_acked_bytes;				/* cumulative byte acked */
 	uint64_t search_targeted_cwnd;  					/* Rollback CWND target = BDP estimate from one RTT earlier; used to initiate SEARCH drain */
 	uint8_t search_cwnd_reduction_to_target; 			/* Triggers CWND drain toward search_targeted_cwnd */
-	uint32_t search_drain_ackedseg_thresh;        		/* ACKed-segment threshold to permit CWND increase during drain */
 	uint32_t search_drain_ackedseg;      	 			/* Accumulates number of segments ACKed during SEARCH drain */
-	int32_t search_norm_ewma;   /* EWMA-smoothed norm (percent) */ 
+	/* ####################### S:NEW_SLOW_DOWN ############################## */
+	/* SEARCH slowdown controller */
+    uint8_t  search_stage;         /* 0,1,2 */
+    uint8_t  search_div;           /* cached divisor: 1/2/4 */
+    uint8_t  search_above_t1;       /* consecutive bins >= T1 */
+    uint8_t  search_above_t2;       /* consecutive bins >= T2 */
+    uint8_t search_has_norm;  /* set to 1 only when norm_diff computed this bin */
+	/* ####################### E:NEW_SLOW_DOWN ############################## */
 
 };
 

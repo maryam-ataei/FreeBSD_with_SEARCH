@@ -108,6 +108,8 @@ VNET_DECLARE(uint32_t, newreno_beta);
 VNET_DECLARE(uint32_t, newreno_beta_ecn);
 #define V_newreno_beta_ecn VNET(newreno_beta_ecn)
 
+#define LOGGING_ENABLED
+
 /*
  * SEARCH: Congestion control algorithm registration.
  *
@@ -138,6 +140,11 @@ struct cc_algo newreno_search_cc_algo = {
 static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	memset(nreno->search_acked_bin, 0, sizeof(nreno->search_acked_bin));
 	memset(nreno->search_sent_bin, 0, sizeof(nreno->search_sent_bin));
+	//NEW_CHANGE_begin
+	memset(nreno->search_norm_hist, 0, sizeof(nreno->search_norm_hist));
+	nreno->search_norm_hist_cnt = 0;
+	nreno->search_norm_hist_pos = 0;
+	//NEW_CHANGE_end
 	nreno->search_curr_idx = -1;
 	nreno->search_bin_end_us = 0;
 	nreno->search_scale_factor = 0;
@@ -265,6 +272,12 @@ newreno_cb_init(struct cc_var *ccv, void *ptr)
 	if (newreno_use_search){
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 	}
+
+	#if defined(LOGGING_ENABLED)
+	log(LOG_INFO, "<%p> ACK:[CCRG]Connection initiated [now %lu]\n", 
+	ccv, get_now_us()); 
+	#endif
+
 	return (0);
 }
 
@@ -461,7 +474,7 @@ search_compute_sent_window(struct cc_var *ccv, int32_t left, int32_t right, uint
 }
 
 /*
- * SEARCH: Compute delv window integral.
+ * SEARCH: Compute delv window integral with fractional interpolation.
  *
  * Calculates the cumulative delivered bytes within [left, right] indices for
  * the ACKed window. 
@@ -497,7 +510,7 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 	uint32_t rtt_bins = 0;
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
-
+	
 
 	initial_rtt = nreno->search_bin_duration_us * SEARCH_WIN_BINS * 10 / SEARCH_WINDOW_SIZE_FACTOR;
 
@@ -514,8 +527,131 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
 		overshoot_cwnd_rescaled = overshoot_cwnd << nreno->search_scale_factor;
 
 		nreno->search_targeted_cwnd = max(overshoot_cwnd_rescaled, (V_tcp_initcwnd_segments * mss));
+
+		if (newreno_use_search){
+			#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [overshoot_cwnd_rescaled %u] [cong_idx %u] [search_targeted_cwnd %lu]\n", 
+			ccv,
+			now_us, 
+			overshoot_cwnd_rescaled,
+			cong_idx,
+			nreno->search_targeted_cwnd);
+			#endif
+		}
 	}
+
 }
+//NEW_CHANGE_begin
+/*
+ * Store the latest normalized sample in a fixed-size
+ * circular history buffer. The buffer keeps the most recent
+ * SEARCH_RULE_N samples for dynamic threshold computation.
+ */
+static void
+search_update_norm_history(struct newreno *nreno, u32 norm_diff)
+{
+	nreno->search_norm_hist[nreno->search_norm_hist_pos] = norm_diff;
+	nreno->search_norm_hist_pos =
+		(nreno->search_norm_hist_pos + 1) % SEARCH_RULE_N;
+
+	if (nreno->search_norm_hist_cnt < SEARCH_RULE_N)
+		nreno->search_norm_hist_cnt++;
+}
+
+/*
+ * Integer square root using a digit-by-digit binary method,
+ * similar to Linux kernel int_sqrt().
+ * Returns floor(sqrt(x)) using integer arithmetic only.
+ */
+static u32
+search_isqrt(u64 x)
+{
+	u64 b, m, y = 0;
+
+	if (x <= 1)
+		return ((u32)x);
+
+	/*
+	 * Start with the largest power of 4 <= x.
+	 * Since m moves two bits at a time, initialize from the
+	 * highest even bit position representable in u64.
+	 */
+	m = 1ULL << 62;
+	while (m > x)
+		m >>= 2;
+
+	while (m != 0) {
+		b = y + m;
+		y >>= 1;
+
+		if (x >= b) {
+			x -= b;
+			y += m;
+		}
+		m >>= 2;
+	}
+
+	return ((u32)y);
+}
+/*
+ * Clamp threshold to the valid percentage range.
+ * norm_diff is expressed in percent, so threshold must remain
+ * within [1, 100].
+ */
+static u32
+search_clamp_thr(u32 thr)
+{
+	if (thr < 1)
+		return 1;
+	if (thr > 100)
+		return 100;
+	return thr;
+}
+
+/*
+ * Compute dynamic threshold using mean + standard deviation over
+ * the last SEARCH_RULE_N (=3) normalized differences.
+ *
+ * thr = mean(norm_diff) + std(norm_diff)
+ * To improve robustness with small sample size (N=3), we bound std:
+ *     std = min(std, mean)
+ *
+ * This prevents a single outlier from inflating the threshold
+ * excessively.
+ *
+ * Finally, threshold is clamped to [1, 100] since norm_diff is a percentage.
+ */
+static u32
+search_compute_dyn_threshold(struct newreno *nreno)
+{
+	u64 sum = 0, var_sum = 0;
+	u32 mean, std, thr;
+	u32 x;
+	int i, cnt;
+
+	cnt = nreno->search_norm_hist_cnt;
+	if (cnt == 0)
+		return 0;
+
+	for (i = 0; i < cnt; i++)
+		sum += nreno->search_norm_hist[i];
+
+	mean = div_u64(sum, cnt);
+
+	for (i = 0; i < cnt; i++) {
+		s32 d = (s32)nreno->search_norm_hist[i] - (s32)mean;
+		var_sum += (u64)(d * d);
+	}
+
+	/* population std: sqrt( sum((x-mu)^2) / N ) */
+	x = div_u64(var_sum, cnt);
+	std = search_isqrt(x);
+	std = min(std, mean);
+
+	thr = mean + std;
+	return search_clamp_thr(thr);
+}
+//NEW_CHANGE_end
 
 /*
  * SEARCH: Main update routine.
@@ -530,9 +666,11 @@ search_compute_target_cwnd(struct cc_var* ccv, uint64_t now_us, uint64_t rtt_us)
  *  - true  -> if slow start exit condition is triggered
  *  - false -> otherwise (continue probing)
  *
- * Notes:
- *  - Uses normalized difference (norm_diff) between delivered and sent bytes
- *    to determine slowdown. Exits slow start when norm_diff exceeds SEARCH_THRESH.
+* Notes:
+*  - Uses normalized difference (norm_diff) between delivered and sent bytes
+*    to detect throughput degradation.
+*  - Exit decision is based on a dynamic threshold:
+*  - This enables adaptive detection of congestion under varying network conditions.
  */
 
 static bool 
@@ -550,6 +688,9 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 	uint32_t mss = 0;
 	uint32_t segs_acked = 0;
 	uint32_t adds = 0;
+	//NEW_CHANGE_begin
+	uint32_t dyn_thr = 0;
+	//NEW_CHANGE_end
 
 	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
 
@@ -594,11 +735,47 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 				prev_idx,
 				fraction);
 
+			//NEW_CHANGE_begin
 			if (prev_sent_bytes > 0) {
-				norm_diff = (prev_sent_bytes - curr_delv_bytes) * 100 / prev_sent_bytes;
+				if (prev_sent_bytes >= curr_delv_bytes)
+					norm_diff = div_u64(
+						(prev_sent_bytes - curr_delv_bytes) * 100ULL,
+						prev_sent_bytes
+					);
+
+				else
+					norm_diff = 0;
+
+				/*
+				 * Use dynamic threshold only after collecting enough history (N=3).
+				 * During warm-up, fall back to a conservative static threshold.
+				 */
+				if (nreno->search_norm_hist_cnt == SEARCH_RULE_N)
+					dyn_thr = search_compute_dyn_threshold(nreno);
+				else
+					dyn_thr = SEARCH_MAX_THRESH;
 
 				/* check for exit condition */
-				if (prev_sent_bytes >= curr_delv_bytes && norm_diff >= SEARCH_THRESH) {
+				if (prev_sent_bytes >= curr_delv_bytes && norm_diff >= dyn_thr) {
+
+					#if defined(LOGGING_ENABLED)
+					log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
+						"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %u] "
+						"[dyn_thr %u] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
+						ccv,
+						now_us,
+						nreno->search_bin_duration_us,
+						nreno->search_bin_end_us,
+						curr_delv_bytes,
+						prev_sent_bytes,
+						norm_diff,
+						dyn_thr,
+						nreno->search_curr_idx,
+						prev_idx,
+						fraction
+					);
+					#endif
+
 
 					/* Compute target cwnd but do NOT apply it yet */
 					search_compute_target_cwnd(ccv, now_us, rtt_us);
@@ -606,7 +783,29 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					nreno->search_cwnd_reduction_to_target = 1;
 					return true;
 				}
+
+				/* update history after decision */
+				search_update_norm_history(nreno, norm_diff);
 			}
+			//NEW_CHANGE_end
+
+			#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [bin_duration %d] "
+				"[bin_end %lu] [curr_delv %ld] [prev_sent %ld] [norm_100 %d] "
+				"[scale_factor %d] [curr_idx %d] [prev_idx %d] [fraction %u]\n",
+				ccv,
+				now_us, 
+				nreno->search_bin_duration_us, 
+				nreno->search_bin_end_us, 
+				curr_delv_bytes,
+				prev_sent_bytes,
+				norm_diff,
+				nreno->search_scale_factor,
+				nreno->search_curr_idx,
+				prev_idx,
+				fraction
+				);
+			#endif
 		}
 	}
 	/* SEARCH drain phase */
@@ -637,12 +836,31 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 		/* never go below target while draining */
 		CCV(ccv, snd_cwnd) = max(new_cwnd, (uint32_t)nreno->search_targeted_cwnd);
 
+		// #if defined(LOGGING_ENABLED)
+		// log(LOG_INFO,
+		// 	"<%p> SEARCH:[CCRG] DURING DRAIN [now %lu] [segs_acked %u] [drain_ackedseg %u] [drain_thresh %u] [adds %u] \n",
+		// 	ccv, now_us, segs_acked, nreno->search_drain_ackedseg, SEARCH_DRAIN_ACKEDSEG_THRESH, adds);
+
+
+		// log(LOG_INFO,
+		// 	"<%p> SEARCH:[CCRG] IN_DRAIN [now %lu] [inflight %u] [cur_cwnd %u] [cur_bytes_acked %u] [target %lu]\n",
+		// 	ccv, now_us, inflight, CCV(ccv, snd_cwnd), ccv->bytes_this_ack, nreno->search_targeted_cwnd);
+		// #endif
+
 		/* Drain completed: lock CWND and exit slow start */
 		if (CCV(ccv, snd_cwnd) == nreno->search_targeted_cwnd) {
 			/* Exit Slow Start */
 			CCV(ccv, snd_ssthresh) = CCV(ccv, snd_cwnd);
 
 	        search_reset(nreno, RESET_BIN_DURATION_TRUE);
+
+	        #if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> SEARCH:[CCRG] [now %lu] [exit condition was met [cwnd %u] [ssthresh %u]\n", 
+		 		ccv,
+				now_us, 
+				CCV(ccv, snd_cwnd), 
+				CCV(ccv, snd_ssthresh));
+			#endif
 	    }
 	    return true; 
 	}
@@ -659,6 +877,7 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	uint64_t now_us = 0;
 	uint64_t rtt_us = 0;
 	now_us = get_now_us();
+	uint32_t infl_dbg = 0;
 
 	if (nreno->last_rtt_sample > 0){
 		rtt_us = nreno->last_rtt_sample;
@@ -667,6 +886,31 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 
 	// Update cumulative delivered bytes for SEARCH analysis
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack; 
+
+	#if defined(LOGGING_ENABLED)
+	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [t_B_acked %lu] [curack %u] [cwnd %u] [ssthresh %u] [mss %u] [t_B_sent %lu] [cwnd_limited %d] [t_B_retrans %ju]\n",
+    ccv,
+    now_us,
+    rtt_us,
+    nreno->search_cumulative_acked_bytes,
+    ccv->curack,
+    CCV(ccv, snd_cwnd),
+    CCV(ccv, snd_ssthresh),
+    CCV(ccv, t_maxseg),
+    CCV(ccv, t_sndbytes),
+    (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
+    (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
+
+    if (SEQ_GEQ(CCV(ccv, snd_max), CCV(ccv, snd_una))){
+    	infl_dbg = (uint32_t)SEQ_SUB(CCV(ccv, snd_max), CCV(ccv, snd_una));
+    }
+	uint32_t cwnd = CCV(ccv, snd_cwnd);
+	uint32_t rwnd = CCV(ccv, rcv_wnd);
+	uint32_t snwd = CCV(ccv, snd_wnd);
+
+	log(LOG_INFO, "<%p> DEBUG:[CCRG] [now_debug %lu][cwnd %u] [in_ackrecieved_inflight %u] [rwnd %u] [snwd %u] [snd_max %u] [snd_una %u]\n",
+           ccv, now_us, cwnd, infl_dbg, rwnd, snwd, CCV(ccv, snd_max), CCV(ccv, snd_una));
+	#endif
 
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
 	    (ccv->flags & CCF_CWND_LIMITED)) {
@@ -711,6 +955,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 				/* Disable use of CSS in the future except long idle  */
 				nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
 				newreno_log_hystart_event(ccv, nreno, 11, CCV(ccv, snd_ssthresh));
+				// #if defined(LOGGING_ENABLED)
+				// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [HyPP_flag %u] [ccv_flag %u]\n", 
+				// 	ccv, now_us, nreno->newreno_flags, ccv->flags); 
+				// #endif	
 			}
 
 			if (V_tcp_do_rfc3465) {
@@ -740,11 +988,18 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 				abc_val = V_tcp_abc_l_var;
 
 			if (newreno_use_hystartpp) {
-				
+				// #if defined(LOGGING_ENABLED)
+				// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] [HyPP_flag %u] [ccv_flag %u]\n", 
+				// 	ccv, now_us, nreno->newreno_flags, ccv->flags); 
+				// #endif	
 				if ((ccv->flags & CCF_HYSTART_ALLOWED) &&
 					(nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) &&
 					((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) == 0)) {
 
+					// #if defined(LOGGING_ENABLED)
+					// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in slow start [rtt_sample_count %u] [cur_round_min_rtt %u] [last_round_min_rtt %u]\n", 
+					// 	ccv, now_us, nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->css_lastround_minrtt); 
+					// #endif
 					/*
 					 * Hystart is allowed and still enabled and we are not yet
 					 * in CSS. Lets check to see if we can make a decision on
@@ -778,7 +1033,12 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 							 */
 							nreno->css_baseline_minrtt = nreno->css_current_round_minrtt;
 							nreno->css_entered_at_round = nreno->css_current_round;
-							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);						
+							newreno_log_hystart_event(ccv, nreno, 2, rtt_thresh);	
+
+							// #if defined(LOGGING_ENABLED)
+							// log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now %lu] HyStartPP in CSS [css_baseline_minrtt %u] [css_entered_at_round %u]\n", 
+							// ccv, now_us, nreno->css_baseline_minrtt, nreno->css_entered_at_round); 
+							// #endif					
 						}
 					}
 				}
@@ -810,11 +1070,18 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 		if (incr > 0)
 			CCV(ccv, snd_cwnd) = min(cw + incr,
 			    TCP_MAXWIN << CCV(ccv, snd_scale));
+
+		if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
+			#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> HyStartPP:[CCRG] [now_ %lu] [HyPP_flag %u] [css_base_minrtt %u] [css_entered_rnd %u] [css_cur_rnd %u] [css_cur_rnd_minrtt %u] [last_rtt_sample %u]\n",
+	           ccv, now_us, nreno->newreno_flags, nreno->css_baseline_minrtt, nreno->css_entered_at_round, nreno->css_current_round, nreno->css_current_round_minrtt, nreno->last_rtt_sample);
+			#endif
+		}
 	}
 }
 
 static void
-newreno_after_idle(struct cc_var *ccv)
+newreno_after_idle(struct cc_var *ccv) 
 {
 	struct newreno *nreno;
 
@@ -828,7 +1095,11 @@ newreno_after_idle(struct cc_var *ccv)
 		nreno->newreno_flags |= CC_NEWRENO_HYSTART_ENABLED;
 		newreno_log_hystart_event(ccv, nreno, 12, CCV(ccv, snd_ssthresh));
 	}
-	search_reset(nreno, RESET_BIN_DURATION_TRUE);
+	#if defined(LOGGING_ENABLED)
+	log(LOG_INFO, "<%p> DEBUG:[CCRG] After idle [now %lu]\n", ccv, get_now_us()); 
+	#endif
+	if (newreno_use_search)
+		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 }
 
 /*
@@ -871,6 +1142,9 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 
 		if (newreno_use_search)
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
+		#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] Loss happens at [now %lu]\n", ccv, get_now_us()); 
+		#endif
 		if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) {
 			/* Make sure the flags are all off we had a loss */
 			nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
@@ -893,6 +1167,11 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 
 		if (newreno_use_search)
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
+
+		#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] ECN flag happens at [now %lu]\n", ccv, get_now_us());
+		#endif
+
 		if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) {
 			/* Make sure the flags are all off we had a loss */
 			nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_ENABLED;
@@ -909,6 +1188,10 @@ newreno_cong_signal(struct cc_var *ccv, uint32_t type)
 
 		if (newreno_use_search)
 		 	search_reset(nreno, RESET_BIN_DURATION_TRUE);
+
+		#if defined(LOGGING_ENABLED)
+			log(LOG_INFO, "<%p> ACK:[CCRG] RTO happens at [now %lu]\n", ccv, get_now_us());
+		#endif
 		CCV(ccv, snd_ssthresh) = max(min(CCV(ccv, snd_wnd),
 						 CCV(ccv, snd_cwnd)) / 2 / mss,
 					     2) * mss;
@@ -996,10 +1279,23 @@ newreno_newround(struct cc_var *ccv, uint32_t round_cnt)
 	nreno->css_rttsample_count = 0;
 	nreno->css_current_round = round_cnt;
 
+	// if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED) ) {
+		// #if defined(LOGGING_ENABLED)
+		// log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in newround [now %lu] [HyPP_flag %u] "
+		// 	"[css_lastround_minrtt %u] [css_cur_round_minrtt %u] [css_rttsample_cnt %u] [css_cur_round %u]\n", 
+		// 	ccv, get_now_us(),nreno->newreno_flags, nreno->css_lastround_minrtt, nreno->css_current_round_minrtt, 
+		// 	nreno->css_rttsample_count, nreno->css_current_round);
+		// #endif
+	// }
+
 	//Comment out all cwnd and ssthresh setting or add flag if we use hystartpp
 	if (newreno_use_hystartpp) {
 		if ((nreno->newreno_flags & CC_NEWRENO_HYSTART_IN_CSS) &&
 		    ((round_cnt - nreno->css_entered_at_round) >= hystart_css_rounds)) {
+			// #if defined(LOGGING_ENABLED)
+			// log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP enters CA [now %lu] [HyPP_flag %u] \n", 
+			// 	ccv, get_now_us(),nreno->newreno_flags);
+			// #endif
 			/* Enter CA */
 			if (ccv->flags & CCF_HYSTART_CAN_SH_CWND) {
 				/*
@@ -1051,6 +1347,13 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->css_lowrtt_fas = nreno->css_last_fas;
 	}
 
+	// if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)){
+	// #if defined(LOGGING_ENABLED)
+	// log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP in RTT_sampling [now %lu] [css_rttsample_count %u] [css_current_round_minrtt %u] [last_rtt_sample %u]\n", 
+	// 	ccv, get_now_us(), nreno->css_rttsample_count, nreno->css_current_round_minrtt, nreno->last_rtt_sample);
+	// #endif
+	// }
+
 	if ((nreno->css_rttsample_count >= hystart_n_rttsamples) &&
 	    (nreno->css_current_round_minrtt != 0xffffffff) &&
 	    (nreno->css_current_round_minrtt < nreno->css_baseline_minrtt) &&
@@ -1062,6 +1365,11 @@ newreno_rttsample(struct cc_var *ccv, uint32_t usec_rtt, uint32_t rxtcnt, uint32
 		nreno->newreno_flags &= ~CC_NEWRENO_HYSTART_IN_CSS;
 		newreno_log_hystart_event(ccv, nreno, 8, nreno->css_baseline_minrtt);
 		nreno->css_baseline_minrtt = 0xffffffff;
+		if (newreno_use_hystartpp  && (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)){
+			#if defined(LOGGING_ENABLED)
+				log(LOG_INFO, "<%p> HyStartPP:[CCRG] HyPP back to the SS from CSS [now %lu]\n", ccv, get_now_us());
+			#endif
+		}
 	}
 	if (nreno->newreno_flags & CC_NEWRENO_HYSTART_ENABLED)
 		newreno_log_hystart_event(ccv, nreno, 5, usec_rtt);
