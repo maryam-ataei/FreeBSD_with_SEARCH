@@ -668,7 +668,7 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 					        nreno->search_stage = 1;
 					}
 
-					/* De-escalate slowly (hysteresis) */
+					/* De-escalate slowly */
 					if (nreno->search_stage == 2 && norm_diff <= SEARCH_T2_LOW) {
 					    nreno->search_stage = 1;
 					}
