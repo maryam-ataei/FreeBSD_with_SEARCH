@@ -636,13 +636,15 @@ search_update(struct cc_var* ccv, int64_t now_us, int64_t rtt_us) {
 
 					/* Update persistence counters */
 					if (norm_diff >= SEARCH_T1) {
-					    if (nreno->search_above_t1 < 255) nreno->search_above_t1++;
+					    if (nreno->search_above_t1 < 255) 
+							nreno->search_above_t1++;
 					} else {
 					    nreno->search_above_t1 = 0;
 					}
 
 					if (norm_diff >= SEARCH_T2) {
-					    if (nreno->search_above_t2 < 255) nreno->search_above_t2++;
+					    if (nreno->search_above_t2 < 255) 
+							nreno->search_above_t2++;
 					} else {
 					    nreno->search_above_t2 = 0;
 					}
