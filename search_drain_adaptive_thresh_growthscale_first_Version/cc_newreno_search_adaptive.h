@@ -1,0 +1,121 @@
+/*-
+ * Copyright (c) 2017 Tom Jones <tj@enoti.me>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#ifndef _CC_NEWRENO_H
+#define _CC_NEWRENO_H
+ 
+#define CCALGONAME_NEWRENO "newreno_search"
+ 
+typedef uint16_t search_bin_t;
+#define MAX_US_INT 0xffff	//16bit	0xffff   32bit	0xffffffff
+
+#define SEARCH_WINDOW_SIZE_FACTOR 35
+#define SEARCH_WIN_BINS 10
+#define SEARCH_EXTRA_ACKED_BINS 1
+#define SEARCH_EXTRA_SENT_BINS 40
+#define SEARCH_ACKED_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_ACKED_BINS)
+#define SEARCH_SENT_BINS (SEARCH_WIN_BINS + SEARCH_EXTRA_SENT_BINS)
+#define SEARCH_THRESH 35
+#define SEARCH_ALPHA MAX_US_INT
+
+/* SEARCH adaptive threshold / growth / drain parameters. */
+#define SEARCH_DRAIN_ACKEDSEG_THRESH 16
+#define SEARCH_NORM_HISTORY_MAX 6
+#define SEARCH_THRESH_MIN 13
+#define SEARCH_THRESH_MAX 50
+#define SEARCH_EARLY_THRESH 35
+#define SEARCH_VERSION 41
+
+#define SEARCH_THRESH_FIXED 0
+#define SEARCH_THRESH_DYNAMIC 1
+#define SEARCH_THRESH_MODE SEARCH_THRESH_DYNAMIC
+
+#define SEARCH_GROWTH_NORMAL 0
+#define SEARCH_GROWTH_SCALING 1
+#define SEARCH_GROWTH_DRAIN 2
+#define SEARCH_GROWTH_POLICY SEARCH_GROWTH_SCALING
+
+#define SEARCH_GROWTH_CURVE_LINEAR 0
+#define SEARCH_GROWTH_CURVE_QUADRATIC 1
+#define SEARCH_GROWTH_CURVE_CUBIC 2
+#define SEARCH_GROWTH_CURVE SEARCH_GROWTH_CURVE_QUADRATIC
+
+enum unset_bin_duration {
+	RESET_BIN_DURATION_TRUE,		// Reset bin duration
+	RESET_BIN_DURATION_FALSE		// Do not reset bin duration
+};
+
+struct newreno {
+	uint32_t beta;
+	uint32_t beta_ecn;
+	uint32_t newreno_flags;
+	uint32_t css_baseline_minrtt;
+	uint32_t css_current_round_minrtt;
+	uint32_t css_lastround_minrtt;
+	uint32_t css_rttsample_count;
+	uint32_t css_entered_at_round;
+	uint32_t css_current_round;
+	uint32_t css_fas_at_css_entry;
+	uint32_t css_lowrtt_fas;
+	uint32_t css_last_fas;
+ 
+	uint32_t last_rtt_sample;					/* Most recent RTT sample (in microseconds) from rttsample() */
+	uint32_t search_bin_duration_us;			/* duration of each bin in microsecond */
+	int32_t  search_curr_idx;					/* total number of bins */
+	uint64_t search_bin_end_us;					/* end time of the latest bin in microsecond */
+	search_bin_t search_acked_bin[SEARCH_ACKED_BINS];	/* array to keep acked bytes for bins */
+	search_bin_t search_sent_bin[SEARCH_SENT_BINS];	/* array to keep sent bytes for bins */
+	uint8_t search_scale_factor;				/* scale factor to fit the value with bin size */
+	uint64_t search_cumulative_acked_bytes;				/* cumulative byte acked */
+	uint64_t search_targeted_cwnd;				/* SEARCH drain target cwnd, in bytes on FreeBSD */
+	uint32_t search_drain_ackedseg;				/* segments ACKed during SEARCH drain */
+	int16_t search_norm_hist[SEARCH_NORM_HISTORY_MAX];	/* rolling norm_diff history */
+	uint8_t search_norm_hist_count;				/* number of norm samples observed */
+	uint32_t search_growth_accum;				/* fractional byte-growth accumulator */
+	uint32_t search_growth_factor_scaled;				/* 125=1.25x, 400=4.00x */
+	uint8_t search_runtime_mode;				/* NORMAL, SCALING, or DRAIN */
+};
+ 
+#undef  SEARCH_ACKED_BIN
+#undef  SEARCH_SENT_BIN
+
+#define SEARCH_ACKED_BIN(ccv, i) (((struct newreno*)(ccv)->cc_data)->search_acked_bin[(i)% SEARCH_ACKED_BINS])
+#define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[(i) % SEARCH_SENT_BINS])
+/* SEARCH_end */
+
+struct cc_newreno_opts {
+	int		name;
+	uint32_t	val;
+};
+
+#define CC_NEWRENO_BETA			1	/* Beta for normal DUP-ACK/Sack recovery */
+#define CC_NEWRENO_BETA_ECN		2	/* ECN Beta for Abe */
+
+/* Flags values */
+#define CC_NEWRENO_HYSTART_ENABLED	0x0002	/* We can do hystart, a loss removes this flag */
+#define CC_NEWRENO_HYSTART_IN_CSS	0x0004	/* If we enter hystart CSS this flag is set */
+#define CC_NEWRENO_BETA_ECN_ENABLED	0x0020
+#endif /* _CC_NEWRENO_H */
