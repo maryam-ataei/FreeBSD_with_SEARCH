@@ -27,7 +27,6 @@
 #ifndef _CC_NEWRENO_H
 #define _CC_NEWRENO_H
  
-/* SEARCH_begin */
 #define CCALGONAME_NEWRENO "newreno_search"
  
 typedef uint16_t search_bin_t;
@@ -45,14 +44,44 @@ typedef uint16_t search_bin_t;
 #define SEARCH_THRESH 26
 #define SEARCH_ALPHA 2
 #define SEARCH_DRAIN_ACKEDSEG_THRESH 3
-#define SEARCH_VERSION 40
+
+/* SEARCH 4.1 adaptive threshold parameters. */
+#define SEARCH_NORM_HISTORY_MAX 6
+#define SEARCH_THRESH_MIN 13
+#define SEARCH_THRESH_MAX 50
+#define SEARCH_MIN_SAMPLES_FOR_STD 6
+#define SEARCH_EARLY_THRESH 35
+
+#define SEARCH_VERSION 41
+
+enum {
+	SEARCH_THRESH_FIXED = 0,
+	SEARCH_THRESH_DYNAMIC = 1,
+};
+
+enum {
+	SEARCH_GROWTH_NORMAL = 0,
+	SEARCH_GROWTH_SCALING = 1,
+};
+
+enum {
+	SEARCH_GROWTH_CURVE_LINEAR = 0,
+	SEARCH_GROWTH_CURVE_QUADRATIC = 1,
+	SEARCH_GROWTH_CURVE_CUBIC = 2,
+};
+
+/*
+ * FreeBSD build-time SEARCH 4.1 policy selection.
+ * Both new 4.1 features are enabled by default.
+ */
+#define SEARCH_THRESH_MODE SEARCH_THRESH_DYNAMIC
+#define SEARCH_GROWTH_POLICY SEARCH_GROWTH_SCALING
 
 enum unset_bin_duration {
 	RESET_BIN_DURATION_TRUE,		// Reset bin duration
 	RESET_BIN_DURATION_FALSE		// Do not reset bin duration
 };
  
-/* SEARCH_end */
 
 struct newreno {
 	uint32_t beta;
@@ -68,7 +97,6 @@ struct newreno {
 	uint32_t css_lowrtt_fas;
 	uint32_t css_last_fas;
  
-	/* SEARCH_begin */
 	uint32_t last_rtt_sample;							/* Most recent RTT sample (in microseconds) from rttsample() */
 	uint32_t search_bin_duration_us;					/* duration of each bin in microsecond */
 	int32_t  search_curr_idx;							/* total number of bins */
@@ -81,6 +109,12 @@ struct newreno {
 	uint64_t search_drain_acked_bytes;					/* ACKed bytes accumulated while draining */
 	uint64_t search_targeted_cwnd;						/* drain target in BYTES */
 	uint8_t search_cwnd_reduction_to_target;			/* non-zero while SEARCH drain is active */
+
+	/* SEARCH 4.1 adaptive threshold and scaled-growth state. */
+	int32_t search_norm_hist[SEARCH_NORM_HISTORY_MAX];	/* recent norm_diff values */
+	uint32_t search_norm_hist_count;					/* total norm samples inserted */
+	uint64_t search_growth_accum;						/* fractional byte-growth accumulator (base 100) */
+	uint32_t search_growth_factor_scaled;				/* 125..400 means 1.25x..4.00x increment */
 };
  
 #undef  SEARCH_ACKED_BIN
@@ -88,7 +122,6 @@ struct newreno {
 
 #define SEARCH_ACKED_BIN(ccv, i) (((struct newreno*)(ccv)->cc_data)->search_acked_bin[(i)% SEARCH_ACKED_BINS])
 #define SEARCH_SENT_BIN(ccv, i)  (((struct newreno*)(ccv)->cc_data)->search_sent_bin[(i) % SEARCH_SENT_BINS])
-/* SEARCH_end */
 
 struct cc_newreno_opts {
 	int		name;
