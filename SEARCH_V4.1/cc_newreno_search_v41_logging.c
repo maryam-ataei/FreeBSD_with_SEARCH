@@ -552,8 +552,8 @@ search_compute_dyn_thresh(struct newreno *nreno)
 
 	if (nreno->search_norm_hist_count < SEARCH_MIN_SAMPLES_FOR_STD) {
 		log(LOG_INFO,
-		    "SEARCH41_DYN_THRESH: [samples %u] [early 1] [threshold %u]\n",
-		    nreno->search_norm_hist_count, SEARCH_EARLY_THRESH);
+		    "<%p> SEARCH41_DYN_THRESH: [samples %u] [early 1] [threshold %u]\n",
+		    (void *)nreno, nreno->search_norm_hist_count, SEARCH_EARLY_THRESH);
 		return (SEARCH_EARLY_THRESH);
 	}
 
@@ -578,9 +578,9 @@ search_compute_dyn_thresh(struct newreno *nreno)
 	threshold = (int32_t)((25U * std) / 10U);
 
 	log(LOG_INFO,
-	    "SEARCH41_DYN_THRESH: [samples %u] [early 0] [mean %d] "
+	    "<%p> SEARCH41_DYN_THRESH: [samples %u] [early 0] [mean %d] "
 	    "[std %u] [raw_thresh %d] [threshold %u]\n",
-	    count, mean, std, threshold, search_clamp_thresh(threshold));
+	    (void *)nreno, count, mean, std, threshold, search_clamp_thresh(threshold));
 
 	return (search_clamp_thresh(threshold));
 }
@@ -753,19 +753,21 @@ search_update(struct cc_var *ccv, int64_t now_us, int64_t rtt_us)
 				}
 
 				log(LOG_INFO,
-				    "SEARCH41_THRESH: [now %ju] [norm %d] [exit_thresh %u] "
+				    "<%p> SEARCH41_THRESH: [now %ju] [norm %d] [exit_thresh %u] "
 				    "[samples %u] [mode %u]\n",
-				    (uintmax_t)now_us, norm_diff, exit_thresh,
+				    (void *)nreno, (uintmax_t)now_us, norm_diff, exit_thresh,
 				    nreno->search_norm_hist_count, SEARCH_THRESH_MODE);
 
 				if (prev_sent_bytes >= curr_delv_bytes &&
-				    norm_diff >= (int32_t)exit_thresh) {
+				    norm_diff >= (int32_t)exit_thresh &&
+    				(ccv->flags & CCF_CWND_LIMITED)) { // Do not let an app-limited / non-cwnd-limited period contribute to SEARCH detection.
+     
 					/* Compute target first; do not jump cwnd down. */
 					if (search_compute_target_cwnd(ccv)) {
 						log(LOG_INFO,
-						    "SEARCH41_EXIT: [now %ju] [norm %d] [exit_thresh %u] "
+						    "<%p> SEARCH41_EXIT: [now %ju] [norm %d] [exit_thresh %u] "
 						    "[cwnd %u] [target_cwnd %ju]\n",
-						    (uintmax_t)now_us, norm_diff, exit_thresh,
+						    (void *)nreno, (uintmax_t)now_us, norm_diff, exit_thresh,
 						    CCV(ccv, snd_cwnd),
 						    (uintmax_t)nreno->search_targeted_cwnd);
 						nreno->search_cwnd_reduction_to_target = 1;
@@ -781,9 +783,9 @@ search_update(struct cc_var *ccv, int64_t now_us, int64_t rtt_us)
 					    exit_thresh, SEARCH_GROWTH_CURVE_QUADRATIC);
 
 					log(LOG_INFO,
-					    "SEARCH41_FACTOR: [now %ju] [norm %d] [exit_thresh %u] "
+					    "<%p> SEARCH41_FACTOR: [now %ju] [norm %d] [exit_thresh %u] "
 					    "[growth_factor %u.%02u]\n",
-					    (uintmax_t)now_us, norm_diff, exit_thresh,
+					    (void *)nreno, (uintmax_t)now_us, norm_diff, exit_thresh,
 					    nreno->search_growth_factor_scaled / 100,
 					    nreno->search_growth_factor_scaled % 100);
 				}
@@ -856,9 +858,11 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	 * This mirrors Linux cubictcp_acked()
 	 */
 	if (V_use_search && type == CC_ACK &&
-	    !IN_RECOVERY(CCV(ccv, t_flags)) && rtt_us > 0 &&
-	    CCV(ccv, snd_cwnd) <= CCV(ccv, snd_ssthresh))
-		search_hold_cwnd = search_update(ccv, now_us, rtt_us);
+	    !IN_RECOVERY(CCV(ccv, t_flags)) &&
+	    rtt_us > 0 &&
+	    (nreno->search_cwnd_reduction_to_target != 0 ||
+	     CCV(ccv, snd_cwnd) < CCV(ccv, snd_ssthresh)))
+	    search_hold_cwnd = search_update(ccv, now_us, rtt_us);
 	
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
 	    (ccv->flags & CCF_CWND_LIMITED)) {
@@ -1008,10 +1012,10 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 			nreno->search_growth_accum = scaled_extra % 100;
 
 			log(LOG_INFO,
-			    "SEARCH41_GROWTH_APPLY: [now %ju] [factor %u.%02u] "
+			    "<%p> SEARCH41_GROWTH_APPLY: [now %ju] [factor %u.%02u] "
 			    "[base_incr %u] [scaled_incr %u] [cwnd_before %u] "
 			    "[cwnd_after %u]\n",
-			    (uintmax_t)now_us, factor / 100, factor % 100,
+			    (void *)nreno, (uintmax_t)now_us, factor / 100, factor % 100,
 			    base_incr, incr, cw,
 			    min(cw + incr, TCP_MAXWIN << CCV(ccv, snd_scale)));
 		}
