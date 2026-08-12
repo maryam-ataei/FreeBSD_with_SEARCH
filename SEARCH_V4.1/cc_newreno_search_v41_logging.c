@@ -853,6 +853,21 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	/* Update cumulative delivered bytes for SEARCH analysis. */
 	nreno->search_cumulative_acked_bytes += ccv->bytes_this_ack;
 
+	log(LOG_INFO, "<%p> ACK:[CCRG] [now %lu] [rtt_us %lu] [total_byte_acked %lu] [curack %u] [cwnd %u] [ssthresh %u] "
+	"[mss %u] [total_bytes_sent %lu] [cwnd_limited %d] [total_retrans %ju]\n",
+    ccv,
+    now_us,
+    rtt_us,
+    nreno->search_cumulative_acked_bytes,
+    ccv->curack,
+    CCV(ccv, snd_cwnd),
+    CCV(ccv, snd_ssthresh),
+    CCV(ccv, t_maxseg),
+    CCV(ccv, t_sndbytes),
+    (ccv->flags & CCF_CWND_LIMITED) ? 1 : 0,
+    (uintmax_t)CCV(ccv, t_snd_rxt_bytes));
+
+
 	/*
 	 * Run SEARCH from the ACK path, independently of ordinary cwnd growth.
 	 * This mirrors Linux cubictcp_acked()
