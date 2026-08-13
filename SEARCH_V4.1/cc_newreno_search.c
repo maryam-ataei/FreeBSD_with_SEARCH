@@ -140,8 +140,7 @@ static void search_reset(struct newreno* nreno, enum unset_bin_duration flag) {
 	nreno->search_scale_factor = 0;
 	nreno->search_targeted_cwnd = 0;
 	nreno->search_cwnd_reduction_to_target = 0;
-	nreno->search_drain_acked_bytes = 0;
-	nreno->search_prior_acked_bytes = nreno->search_cumulative_acked_bytes;
+	nreno->search_drain_ackedseg = 0;
 
 	/* SEARCH 4.1 adaptive threshold / scaled growth state. */
 	memset(nreno->search_norm_hist, 0, sizeof(nreno->search_norm_hist));
@@ -687,16 +686,15 @@ search_update(struct cc_var *ccv, int64_t now_us, int64_t rtt_us)
 	struct newreno *nreno = ccv->cc_data;
 	uint64_t curr_delv_bytes;
 	uint64_t prev_sent_bytes;
-	uint64_t acked_bytes;
-	uint64_t threshold_bytes;
-	uint64_t growth_bytes;
 	uint64_t inflight_bytes;
 	uint64_t new_cwnd;
 	int64_t diff;
 	int32_t norm_diff;
 	int32_t prev_idx;
 	uint32_t fraction;
-	uint64_t growth_segs;
+	uint32_t segs_acked;
+	uint32_t adds;
+	uint32_t mss;
 	uint32_t exit_thresh;
 
 	/* Normal SEARCH measurement/detection phase. */
@@ -733,7 +731,7 @@ search_update(struct cc_var *ccv, int64_t now_us, int64_t rtt_us)
 				diff = (int64_t)prev_sent_bytes -
 				    (int64_t)curr_delv_bytes;
 				norm_diff = (int32_t)(diff * 100 /
-				    (int64_t)prev_sent_bytes);
+				    		(int64_t)prev_sent_bytes);
 
 				/* SEARCH 4.1 adaptive/fixed threshold selection. */
 				if (SEARCH_THRESH_MODE == SEARCH_THRESH_FIXED) {
@@ -744,13 +742,13 @@ search_update(struct cc_var *ccv, int64_t now_us, int64_t rtt_us)
 				}
 
 				if (prev_sent_bytes >= curr_delv_bytes &&
-				    norm_diff >= (int32_t)exit_thresh) {
+				    norm_diff >= (int32_t)exit_thresh &&
+    				(ccv->flags & CCF_CWND_LIMITED)) { // Do not let an app-limited / non-cwnd-limited period contribute to SEARCH detection.
+
 					/* Compute target first; do not jump cwnd down. */
 					if (search_compute_target_cwnd(ccv)) {
 						nreno->search_cwnd_reduction_to_target = 1;
-						nreno->search_prior_acked_bytes =
-						    nreno->search_cumulative_acked_bytes;
-						nreno->search_drain_acked_bytes = 0;
+						nreno->search_drain_ackedseg = 0;
 						return (true); /* freeze normal SS growth */
 					}
 				} else if (norm_diff < (int32_t)exit_thresh &&
@@ -767,39 +765,63 @@ search_update(struct cc_var *ccv, int64_t now_us, int64_t rtt_us)
 	/*
 	 * SEARCH drain phase.
 	 *
-	 * FreeBSD expresses snd_cwnd in
-	 * bytes, so convert the 1-packet-per-3-ACKed-segments allowance to bytes.
+	 * CWND and in-flight data are byte-based in FreeBSD, but the drain pacing
+	 * rule is segment-based: for every SEARCH_DRAIN_ACKEDSEG_THRESH ACKed
+	 * segments, allow one MSS back into cwnd.
 	 */
-	acked_bytes = nreno->search_cumulative_acked_bytes -
-	    nreno->search_prior_acked_bytes;
-	nreno->search_prior_acked_bytes = nreno->search_cumulative_acked_bytes;
-	nreno->search_drain_acked_bytes += acked_bytes;
+	mss = tcp_fixed_maxseg(ccv->ccvc.tcp);
+	segs_acked = 0;
+	adds = 0;
+	inflight_bytes = 0;
 
-	threshold_bytes = (uint64_t)SEARCH_DRAIN_ACKEDSEG_THRESH *
-	    (uint64_t)CCV(ccv, t_maxseg);
-	growth_segs = 0;
-	if (threshold_bytes > 0 &&
-	    nreno->search_drain_acked_bytes >= threshold_bytes) {
-		growth_segs = nreno->search_drain_acked_bytes / threshold_bytes;
-		nreno->search_drain_acked_bytes %= threshold_bytes;
+	/*
+	 * Use the ACK currently being processed when computing in-flight data.
+	 */
+	if (SEQ_GEQ(CCV(ccv, snd_max), ccv->curack)) {
+		inflight_bytes =
+		    (uint32_t)SEQ_SUB(CCV(ccv, snd_max), ccv->curack);
 	}
-	growth_bytes = growth_segs * (uint64_t)CCV(ccv, t_maxseg);
 
-	/* snd_max - snd_una is outstanding sequence space, i.e., bytes in flight. */
-	inflight_bytes = (uint32_t)(CCV(ccv, snd_max) - CCV(ccv, snd_una));
-	new_cwnd = inflight_bytes + growth_bytes;
+	/*
+	 * Convert bytes ACKed by this ACK into ACKed segments.
+	 * Ceiling division preserves the behavior of the known-good drain.
+	 */
+	if (mss > 0 && ccv->bytes_this_ack > 0) {
+		segs_acked =
+		    (ccv->bytes_this_ack + mss - 1) / mss;
+	}
+
+	/*
+	 * Accumulate ACKed segments across ACKs.
+	 * Every SEARCH_DRAIN_ACKEDSEG_THRESH segments permits one MSS of cwnd.
+	 */
+	nreno->search_drain_ackedseg += segs_acked;
+
+	if (nreno->search_drain_ackedseg >= SEARCH_DRAIN_ACKEDSEG_THRESH) {
+		adds = nreno->search_drain_ackedseg /
+		    SEARCH_DRAIN_ACKEDSEG_THRESH;
+		nreno->search_drain_ackedseg %=
+		    SEARCH_DRAIN_ACKEDSEG_THRESH;
+	}
+
+	new_cwnd = inflight_bytes + (uint64_t)adds * (uint64_t)mss;
+
+	/* Never go below the SEARCH target while draining. */
 	if (new_cwnd < nreno->search_targeted_cwnd)
 		new_cwnd = nreno->search_targeted_cwnd;
 
 	CCV(ccv, snd_cwnd) = (uint32_t)new_cwnd;
 
+	/* Drain completed: exit slow start at the SEARCH target. */
 	if (new_cwnd == nreno->search_targeted_cwnd) {
-		CCV(ccv, snd_ssthresh) = nreno->search_targeted_cwnd;
+		CCV(ccv, snd_ssthresh) =
+		    (u_int)nreno->search_targeted_cwnd;
 		search_reset(nreno, RESET_BIN_DURATION_TRUE);
 	}
 
 	/* Never let ordinary slow-start growth run on the same ACK as drain. */
 	return (true);
+
 }
 
 static void
@@ -828,9 +850,11 @@ newreno_ack_received(struct cc_var *ccv, uint16_t type)
 	 * This mirrors Linux cubictcp_acked()
 	 */
 	if (V_use_search && type == CC_ACK &&
-	    !IN_RECOVERY(CCV(ccv, t_flags)) && rtt_us > 0 &&
-	    CCV(ccv, snd_cwnd) <= CCV(ccv, snd_ssthresh))
-		search_hold_cwnd = search_update(ccv, now_us, rtt_us);
+	    !IN_RECOVERY(CCV(ccv, t_flags)) &&
+	    rtt_us > 0 &&
+	    (nreno->search_cwnd_reduction_to_target != 0 ||
+	     CCV(ccv, snd_cwnd) < CCV(ccv, snd_ssthresh)))
+	    search_hold_cwnd = search_update(ccv, now_us, rtt_us);
 	
 	if (type == CC_ACK && !IN_RECOVERY(CCV(ccv, t_flags)) &&
 	    (ccv->flags & CCF_CWND_LIMITED)) {
